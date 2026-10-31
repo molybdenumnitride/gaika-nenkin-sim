@@ -46,8 +46,12 @@ nav.top button[aria-selected=true]{color:var(--fg);border-bottom-color:var(--acc
 nav.sub{display:flex;flex-wrap:wrap;gap:6px;margin:0 auto 14px;max-width:1180px}
 nav.sub button{font:inherit;font-size:.8rem;padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--fg);cursor:pointer}
 nav.sub button[aria-selected=true]{background:var(--accent);color:#fff;border-color:var(--accent)}
-.kpi{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.78rem;color:var(--muted);align-items:baseline}
+.kpi{position:sticky;top:0;z-index:10;display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.78rem;color:var(--muted);align-items:baseline;
+  max-width:1180px;margin:0 auto 16px;padding:calc(8px + env(safe-area-inset-top,0px)) 0 8px;background:var(--bg);border-bottom:1px solid var(--line);box-shadow:0 6px 10px var(--bg)}
+.kpi>span{white-space:nowrap}
 .kpi b{font-family:var(--mono);font-weight:500;color:var(--fg);font-size:1rem;font-variant-numeric:tabular-nums}
+html{scroll-padding-top:100px}
+@media(max-width:600px){.kpi{gap:4px 12px;font-size:.7rem;padding-block:calc(6px + env(safe-area-inset-top,0px)) 6px}.kpi b{font-size:.9rem}}
 .pane-nav{display:flex;justify-content:space-between;gap:8px;margin-top:14px;max-width:1180px;margin-inline:auto}
 .pane-nav .input-width{max-width:720px}
 .panel{background:var(--panel);border:1px solid var(--line);padding:14px 16px;min-width:0}
@@ -131,7 +135,6 @@ textarea{width:100%;font:inherit;font-family:var(--mono);font-size:.74rem;paddin
     <h1>外貨建て個人年金 売上シミュレーター</h1>
     <div class="sub">新商品の仕様・外部環境・競合を変えて、年換算保険料（ANP）・件数・収益性の変化を見る — v0.4</div>
   </div>
-  <div class="kpi" id="kpi"></div>
   <div class="row">
     <input type="text" id="scenName" class="namebox" placeholder="シナリオ名">
     <button class="btn" id="saveScen">シナリオ保存</button>
@@ -140,6 +143,7 @@ textarea{width:100%;font:inherit;font-family:var(--mono);font-size:.74rem;paddin
     <button class="btn primary" id="runMC">モンテカルロ実行</button>
   </div>
 </header>
+<div class="kpi" id="kpi" role="region" aria-label="現在の試算結果"></div>
 <nav class="top" id="topnav" aria-label="主要タブ"></nav>
 <nav class="sub" id="subnav" aria-label="見出し"></nav>
 

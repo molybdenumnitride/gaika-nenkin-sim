@@ -1,0 +1,820 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="icon" href="data:,">
+<style>html{color-scheme:light dark}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>外貨建て年金 売上シミュレーター</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: left control rail (environment / product / channel), right results stack + spec. Treatment: actuarial worksheet — dense, tabular numerals, ink-blue accent. */
+:root{
+  --bg:#f6f7f4; --panel:#ffffff; --fg:#1d2430; --muted:#5e6878; --line:#d9ddd6;
+  --accent:#1f4e8c; --accent-soft:#e3ebf6; --good:#2d7a4f; --warn:#b2641a; --crit:#b23a3a;
+  --s1:#1f4e8c; --s2:#c0552b; --s3:#6b8e4e; --s4:#8a6bb5; --s5:#9aa5b5; --band:rgba(31,78,140,.14);
+  --display:"Noto Sans JP",system-ui,sans-serif; --body:"Noto Sans JP",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#141922; --panel:#1c2330; --fg:#e8ebef; --muted:#9aa5b5; --line:#2f3947;
+  --accent:#7fa8e0; --accent-soft:#223652; --good:#6fc28f; --warn:#e0a35b; --crit:#e07a7a;
+  --s1:#7fa8e0; --s2:#e58a60; --s3:#9fc27a; --s4:#b79be0; --s5:#6b7686; --band:rgba(127,168,224,.18); color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#141922; --panel:#1c2330; --fg:#e8ebef; --muted:#9aa5b5; --line:#2f3947;
+  --accent:#7fa8e0; --accent-soft:#223652; --good:#6fc28f; --warn:#e0a35b; --crit:#e07a7a;
+  --s1:#7fa8e0; --s2:#e58a60; --s3:#9fc27a; --s4:#b79be0; --s5:#6b7686; --band:rgba(127,168,224,.18); color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 48px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
+h1{font-size:1.35rem;font-weight:700;letter-spacing:.01em}
+h2{font-size:.95rem;font-weight:700;margin-bottom:10px}
+h3{font-size:.8rem;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+header{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:baseline;justify-content:space-between;border-bottom:2px solid var(--fg);padding-bottom:10px;margin-bottom:16px}
+header .sub{color:var(--muted);font-size:.85rem}
+.panes{max-width:1180px;margin:0 auto}
+.panes>.panel{display:none}
+.panes>.panel.active{display:block}
+.panes>.panel.input{max-width:720px}
+nav.top{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:8px;max-width:1180px;margin-inline:auto}
+nav.top button{font:inherit;font-size:.95rem;font-weight:700;padding:10px 18px;border:0;border-bottom:3px solid transparent;background:none;color:var(--muted);cursor:pointer}
+nav.top button[aria-selected=true]{color:var(--fg);border-bottom-color:var(--accent)}
+nav.sub{display:flex;flex-wrap:wrap;gap:6px;margin:0 auto 14px;max-width:1180px}
+nav.sub button{font:inherit;font-size:.8rem;padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--fg);cursor:pointer}
+nav.sub button[aria-selected=true]{background:var(--accent);color:#fff;border-color:var(--accent)}
+.kpi{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.78rem;color:var(--muted);align-items:baseline}
+.kpi b{font-family:var(--mono);font-weight:500;color:var(--fg);font-size:1rem;font-variant-numeric:tabular-nums}
+.pane-nav{display:flex;justify-content:space-between;gap:8px;margin-top:14px;max-width:1180px;margin-inline:auto}
+.pane-nav .input-width{max-width:720px}
+.panel{background:var(--panel);border:1px solid var(--line);padding:14px 16px;min-width:0}
+.group{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+.group:first-child{border-top:0;padding-top:0;margin-top:0}
+.field{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;margin:7px 0}
+.field label{font-size:.82rem}
+.field .val{font-family:var(--mono);font-size:.82rem;color:var(--accent);min-width:5ch;text-align:right;font-variant-numeric:tabular-nums}
+.field input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--accent);margin:0}
+.seg{display:flex;gap:0;grid-column:1/-1}
+.seg button{flex:1;font:inherit;font-size:.8rem;padding:5px 4px;border:1px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer}
+.seg button+button{margin-left:-1px}
+.seg button[aria-pressed=true]{background:var(--accent);color:#fff;border-color:var(--accent)}
+.seg button:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tile{border:1px solid var(--line);padding:10px 12px;background:var(--bg)}
+.tile .k{font-size:.72rem;color:var(--muted);letter-spacing:.04em}
+.tile .v{font-family:var(--mono);font-size:1.35rem;font-weight:500;font-variant-numeric:tabular-nums;line-height:1.2;margin-top:2px}
+.tile .d{font-size:.72rem;color:var(--muted);margin-top:2px}
+.tile.good .v{color:var(--good)} .tile.warn .v{color:var(--warn)} .tile.crit .v{color:var(--crit)}
+.chartbox{position:relative;width:100%;height:260px}
+.chartbox.tall{height:320px}
+table{width:100%;border-collapse:collapse;font-size:.82rem;font-variant-numeric:tabular-nums}
+th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:500;color:var(--muted);font-size:.75rem}
+td.num{font-family:var(--mono)}
+.tablewrap{overflow-x:auto}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{font:inherit;font-size:.8rem;padding:6px 12px;border:1px solid var(--accent);background:var(--panel);color:var(--accent);cursor:pointer}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.small{padding:2px 8px;font-size:.72rem}
+.btn.danger{border-color:var(--crit);color:var(--crit)}
+.note{font-size:.78rem;color:var(--muted)}
+.pill{display:inline-block;font-size:.7rem;padding:1px 7px;border:1px solid var(--line);border-radius:999px;color:var(--muted);margin-left:6px}
+.pill.assume{border-color:var(--warn);color:var(--warn)}
+.pill.data{border-color:var(--good);color:var(--good)}
+.pill.cal{border-color:var(--accent);color:var(--accent)}
+.comp input,.comp select{font:inherit;font-family:var(--mono);font-size:.76rem;padding:2px 4px;border:1px solid var(--line);background:var(--bg);color:var(--fg);width:5.5em}
+.comp input[type=text]{width:9em;font-family:var(--body)}
+.comp select{width:auto}
+.comp td{padding:3px 5px}
+textarea{width:100%;font:inherit;font-family:var(--mono);font-size:.74rem;padding:6px;border:1px solid var(--line);background:var(--bg);color:var(--fg);min-height:60px;margin-top:8px}
+.namebox{font:inherit;font-size:.8rem;padding:5px 8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);width:11em}
+.toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:6px 14px;font-size:.8rem;border-radius:4px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.75rem;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;margin-right:4px;vertical-align:-1px}
+.spec h3{margin:4px 0 8px;color:var(--fg);text-transform:none;letter-spacing:.02em;font-size:.88rem;font-weight:700}
+.spec p,.spec li{font-size:.84rem;max-width:72ch}
+.spec pre{font-family:var(--mono);font-size:.78rem;line-height:1.6;background:var(--bg);border:1px solid var(--line);padding:10px 12px;overflow-x:auto;margin:6px 0;white-space:pre}
+.spec ul{padding-left:18px;margin:4px 0}
+.spec-t td,.spec-t th{text-align:left;white-space:normal}
+.spec-t td:first-child{font-family:var(--mono);white-space:nowrap}
+.scen-list{display:flex;flex-direction:column;gap:4px;font-size:.8rem}
+.scen-list .it{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:3px 0}
+.scen-list .it b{font-weight:500}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>外貨建て個人年金 売上シミュレーター</h1>
+    <div class="sub">新商品の仕様・外部環境・競合を変えて、年換算保険料（ANP）・件数・収益性の変化を見る — v0.3</div>
+  </div>
+  <div class="kpi" id="kpi"></div>
+  <div class="row">
+    <input type="text" id="scenName" class="namebox" placeholder="シナリオ名">
+    <button class="btn" id="saveScen">シナリオ保存</button>
+    <button class="btn primary" id="runMC">モンテカルロ実行</button>
+  </div>
+</header>
+<nav class="top" id="topnav" aria-label="主要タブ"></nav>
+<nav class="sub" id="subnav" aria-label="見出し"></nav>
+
+<div class="panes">
+    <div class="panel input" data-top="in" data-sub="env" data-title="外部環境">
+      <h2>外部環境 <span class="pill data">FRED 2026-09</span></h2>
+      <div class="group">
+        <div class="field"><label for="us10">米国債10年 (%)</label><span class="val" id="us10v"></span><input type="range" id="us10" min="0.5" max="7" step="0.05"></div>
+        <div class="field"><label for="au10">豪国債10年 (%)</label><span class="val" id="au10v"></span><input type="range" id="au10" min="0.5" max="7" step="0.05"></div>
+        <div class="field"><label for="jp10">日本国債10年 (%)</label><span class="val" id="jp10v"></span><input type="range" id="jp10" min="-0.5" max="5" step="0.05"></div>
+        <div class="field"><label for="usdjpy">USD/JPY</label><span class="val" id="usdjpyv"></span><input type="range" id="usdjpy" min="90" max="200" step="0.5"></div>
+        <div class="field"><label for="fxtrend">想定 円安トレンド (%/年)</label><span class="val" id="fxtrendv"></span><input type="range" id="fxtrend" min="-10" max="10" step="0.5" value="0"></div>
+        <div class="field"><label>外貨建て比率の決め方<span class="pill cal">校正</span></label><span></span>
+          <div class="seg" id="fcmode"><button aria-pressed="true" data-v="link">日米金利差に連動</button><button aria-pressed="false" data-v="fixed">固定</button></div></div>
+        <div class="field"><label for="fcshare">外貨建て比率（固定時）<span class="pill data">金融庁 2024上期 58%</span></label><span class="val" id="fcsharev"></span><input type="range" id="fcshare" min="10" max="90" step="1" value="58"></div>
+        <div class="note" id="fcnote"></div>
+        <div class="field"><label>販売規制環境（2024年度〜の抑制効果）<span class="pill cal">回帰</span></label><span></span>
+          <div class="seg" id="reg"><button aria-pressed="true" data-v="1">継続</button><button aria-pressed="false" data-v="0">解除</button></div></div>
+        <button class="btn" id="resetEnv" style="margin-top:6px">最新実績に戻す</button>
+      </div>
+    </div>
+
+    <div class="panel input" data-top="in" data-sub="product" data-title="商品仕様">
+      <h2>商品仕様</h2>
+      <div class="group">
+        <div class="field"><label>通貨</label><span></span>
+          <div class="seg" id="ccy"><button aria-pressed="true" data-v="USD">米ドル</button><button aria-pressed="false" data-v="AUD">豪ドル</button></div></div>
+        <div class="field"><label for="credit">予定利率 (%)</label><span class="val" id="creditv"></span><input type="range" id="credit" min="0.5" max="7" step="0.05"></div>
+        <div class="field"><label>払込形態</label><span></span>
+          <div class="seg" id="ptype"><button aria-pressed="true" data-v="single">一時払</button><button aria-pressed="false" data-v="level">平準払</button></div></div>
+        <div class="field"><label for="term">据置／払込期間 (年)</label><span class="val" id="termv"></span><input type="range" id="term" min="3" max="25" step="1" value="10"></div>
+        <div class="field"><label for="sc">解約控除 初年度 (%)</label><span class="val" id="scv"></span><input type="range" id="sc" min="0" max="10" step="0.5" value="5"></div>
+        <div class="field"><label>市場価格調整 (MVA)</label><span></span>
+          <div class="seg" id="mva"><button aria-pressed="true" data-v="1">あり</button><button aria-pressed="false" data-v="0">なし</button></div></div>
+        <div class="field"><label for="fxfee">為替手数料 (銭/通貨単位)</label><span class="val" id="fxfeev"></span><input type="range" id="fxfee" min="0" max="50" step="1" value="50"></div>
+        <div class="field"><label>最低保証</label><span></span>
+          <div class="seg" id="guar"><button aria-pressed="false" data-v="none">なし</button><button aria-pressed="true" data-v="target">目標到達型</button><button aria-pressed="false" data-v="principal">円元本確保</button></div></div>
+        <div class="field"><label for="target">目標値（払込比・目標到達型のみ）</label><span class="val" id="targetv"></span><input type="range" id="target" min="103" max="130" step="1" value="110"></div>
+        <div class="field"><label for="comm">販売手数料率（初年度＋継続の累計, %）</label><span class="val" id="commv"></span><input type="range" id="comm" min="1" max="9" step="0.25" value="6"></div>
+        <div class="field"><label for="avgprem">平均契約保険料 (万円)</label><span class="val" id="avgpremv"></span><input type="range" id="avgprem" min="100" max="3000" step="50" value="800"></div>
+      </div>
+    </div>
+
+    <div class="panel input" data-top="in" data-sub="channel" data-title="販売体制・保有">
+      <h2>販売体制・保有</h2>
+      <div class="group">
+        <div class="field"><label for="bank">銀行窓販 比率 (%)</label><span class="val" id="bankv"></span><input type="range" id="bank" min="0" max="100" step="5" value="60"></div>
+        <div class="field"><label for="sec">証券 比率 (%)</label><span class="val" id="secv"></span><input type="range" id="sec" min="0" max="100" step="5" value="20"></div>
+        <div class="note">残りは代理店・直販。合計100%に正規化します。</div>
+        <div class="field"><label for="reach">チャネル網の広さ（市場に対する到達率）<span class="pill assume">仮定</span></label><span class="val" id="reachv"></span><input type="range" id="reach" min="10" max="100" step="5" value="60"></div>
+        <div class="field"><label for="other">その他小規模商品の合計質量<span class="pill assume">仮定</span></label><span class="val" id="otherv"></span><input type="range" id="other" min="0" max="5" step="0.25" value="2"></div>
+        <div class="field"><label for="brand">ブランド・販売推進力 (倍率)</label><span class="val" id="brandv"></span><input type="range" id="brand" min="0.5" max="1.5" step="0.05" value="1"></div>
+        <div class="field"><label for="launch">発売年度</label><span class="val" id="launchv"></span><input type="range" id="launch" min="2026" max="2030" step="1" value="2027"></div>
+      </div>
+      <div class="group">
+        <h3>目標到達→再販売の循環</h3>
+        <div class="field"><label for="inforce">自社 外貨建て保有残高 (億円・発売時)</label><span class="val" id="inforcev"></span><input type="range" id="inforce" min="0" max="20000" step="250" value="3000"></div>
+        <div class="field"><label for="recap">到達解約の自社再購入率 (%)<span class="pill assume">仮定</span></label><span class="val" id="recapv"></span><input type="range" id="recap" min="0" max="80" step="5" value="40"></div>
+        <div class="field"><label for="poach">他社到達解約の取込率 (%)<span class="pill assume">仮定</span></label><span class="val" id="poachv"></span><input type="range" id="poach" min="0" max="20" step="1" value="3"></div>
+      </div>
+    </div>
+    <div class="panel input" data-top="in" data-sub="profit" data-title="収益前提">
+      <h2>収益前提</h2>
+      <div class="group">
+        <div class="field"><label for="spreadAdd">運用利回り上乗せ（国債対比, %）<span class="pill cal">校正</span></label><span class="val" id="spreadAddv"></span><input type="range" id="spreadAdd" min="0" max="2.5" step="0.1" value="1.5"></div>
+        <div class="field"><label for="clawback">早期解約時の手数料戻入率 (%)</label><span class="val" id="clawbackv"></span><input type="range" id="clawback" min="0" max="100" step="5" value="50"></div>
+        <div class="field"><label for="capratio">所要資本率（保険料比, %）</label><span class="val" id="capratiov"></span><input type="range" id="capratio" min="0" max="12" step="0.5" value="4"></div>
+        <div class="field"><label for="hurdle">資本コスト率 (%/年)</label><span class="val" id="hurdlev"></span><input type="range" id="hurdle" min="0" max="15" step="0.5" value="8"></div>
+      </div>
+    </div>
+
+    <div class="panel" data-top="out" data-sub="summary" data-title="サマリー">
+      <h2>予測サマリー（発売3年目・定常状態）</h2>
+      <div class="tiles" id="tiles"></div>
+    </div>
+
+    <div class="panel" data-top="in" data-sub="comp" data-title="競合商品">
+      <h2>競合商品テーブル <span class="pill data">公表利率＋重要情報シート</span></h2>
+      <div class="note" style="margin-bottom:6px">積立利率・期間は各社公表値、解約控除（初年度）・MVA・為替手数料・販売手数料（初年度＋継続の累計）は販売会社が公開する「重要情報シート」から収録。「基準国債」は公表時点の10年国債利回りで、モデルはその差（利率−基準）を使う。保証の列は「円建て保険金最低保証特約あり＝元本確保」「目標値設定可＝目標到達型」で近似。「販売力」は自社=1.0基準の相対値<span class="pill assume">仮定</span>。</div>
+      <div class="row" id="compFilter" style="margin-bottom:8px;gap:6px 10px">
+        <span class="note">カタログから条件で取得：</span>
+        <label class="note">通貨 <select id="fCcy"><option value="same">自社と同じ</option><option value="USD">USD</option><option value="AUD">AUD</option><option value="all">すべて</option></select></label>
+        <label class="note">種類 <select id="fType"><option value="all">終身＋年金</option><option value="終身">終身</option><option value="年金">年金</option></select></label>
+        <label class="note">チャネル <select id="fChannel"><option value="all">すべて</option><option value="銀行窓販">銀行窓販</option><option value="証券">証券</option><option value="信金">信金</option></select></label>
+        <label class="note">解約控除 <select id="fSc"><option value="all">問わず</option><option value="yes">あり</option><option value="no">なし</option></select></label>
+        <label class="note">為替手数料 <select id="fFx"><option value="all">問わず</option><option value="0">無料のみ</option><option value="50">50銭以下</option></select></label>
+        <label class="note">保証 <select id="fGuar"><option value="all">問わず</option><option value="target">目標到達型</option><option value="principal">元本確保</option><option value="none">なし</option></select></label>
+        <label class="note">利率 <select id="fRate"><option value="all">公表値＋仮置き</option><option value="known">公表値のみ</option></select></label>
+        <label class="note">販売力≥ <input type="number" id="fPower" value="0" step="0.1" min="0" style="width:4em;font:inherit;font-size:.8rem"></label>
+        <button class="btn small primary" id="applyFilter">条件で取得</button>
+        <span class="note" id="catalogNote"></span>
+      </div>
+      <div class="tablewrap"><table class="comp" id="tComp"></table></div>
+      <div class="row" style="margin-top:8px"><button class="btn small" id="addComp">行を追加</button><button class="btn small" id="resetComp">既定値に戻す</button><button class="btn small" id="showCatalog">カタログ全件を表示</button></div>
+    </div>
+
+    <div class="panel" data-top="in" data-sub="weights" data-title="効用ウェイト推定">
+      <h2>効用ウェイト推定（コンジョイント調査）</h2>
+      <p class="note" style="max-width:72ch">商品別の販売実績が公開されていないため（会社横断回帰も試したが識別不能、仕様書§4参照）、販売担当者への選択型調査で「どの仕様がどれだけ提案意向に効くか」を推定します。<a href="conjoint-survey.html">調査ページ「外貨建て年金 商品選好調査」</a>で集めた<b>回答コード</b>を1行ずつ貼り、「推定」を押すと条件付きロジットでウェイトを求め、「適用」でシミュレーターの効用式に反映します。</p>
+      <div class="tablewrap" style="margin:8px 0"><table id="tW"></table></div>
+      <textarea id="codes" placeholder="CJ1-123456789-123412341234-11&#10;CJ1-…（1行に1コード）" style="min-height:90px"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="btn small primary" id="estimate">推定</button>
+        <button class="btn small" id="applyW">推定値を適用</button>
+        <button class="btn small" id="resetW">既定ウェイトに戻す</button>
+        <label class="note"><input type="checkbox" id="scaleW" checked> 予定利率の係数を2.0に合わせてスケール（2017年の自然実験との整合を保つ）</label>
+        <button class="btn small" id="demoW">動作確認用のサンプル回答を生成（30人）</button>
+      </div>
+      <div class="note" id="estNote" style="margin-top:8px"></div>
+      <div class="tablewrap" style="margin-top:8px"><table id="tEst"></table></div>
+    </div>
+
+    <div class="panel" data-top="out" data-sub="forecast" data-title="年度別予測">
+      <h2>年度別 売上予測（5年）</h2>
+      <div class="chartbox"><canvas id="cForecast"></canvas></div>
+      <div class="tablewrap" style="margin-top:10px"><table id="tForecast"></table></div>
+      <div class="row" style="margin-top:8px"><button class="btn small" id="copyForecast">表をCSVでコピー</button></div>
+    </div>
+
+    <div class="panel" data-top="out" data-sub="sens" data-title="感応度">
+      <h2>感応度（発売3年目ANPへの影響）</h2>
+      <div class="note" style="margin-bottom:6px">各仕様を現在値から1段階動かしたときの増減。棒が長いほど売上に効く仕様。</div>
+      <div class="chartbox tall"><canvas id="cTornado"></canvas></div>
+    </div>
+
+    <div class="panel" data-top="out" data-sub="scen" data-title="シナリオ比較">
+      <h2>シナリオ比較</h2>
+      <div class="scen-list" id="scenList"></div>
+      <div class="tablewrap" style="margin-top:10px"><table id="tScen"></table></div>
+      <div class="row" style="margin-top:8px"><button class="btn small" id="copyScen">比較表をCSVでコピー</button><button class="btn small" id="exportJson">全シナリオをJSONで表示</button><button class="btn small" id="importJson">JSONから読み込む</button></div>
+      <textarea id="jsonBox" hidden placeholder="JSONを貼り付けて「JSONから読み込む」"></textarea>
+      <div class="note" style="margin-top:6px">シナリオはこのブラウザに保存されます（他端末には同期されません）。持ち出す場合はJSONを使ってください。</div>
+    </div>
+
+    <div class="panel" data-top="out" data-sub="mc" data-title="モンテカルロ">
+      <h2>不確実性（モンテカルロ 1,000経路・相関あり）</h2>
+      <div class="note" id="mcNote" style="margin-bottom:6px">金利3系列と為替を相関付きで動かし、年度別ANPの分布（P10〜P90帯）を描きます。右上のボタンで実行。</div>
+      <div class="chartbox"><canvas id="cMC"></canvas></div>
+    </div>
+
+    <div class="panel" data-top="out" data-sub="hist" data-title="実績データ">
+      <h2>実績データ：市場と外部環境 <span class="pill data">生保協会・FRED</span></h2>
+      <div class="chartbox"><canvas id="cHist"></canvas></div>
+      <div class="legend"><span><i style="background:var(--s1)"></i>米10年</span><span><i style="background:var(--s2)"></i>豪10年</span><span><i style="background:var(--s3)"></i>日10年</span><span><i style="background:var(--s4)"></i>USD/JPY（右軸）</span></div>
+      <div class="chartbox" style="margin-top:10px;height:220px"><canvas id="cFit"></canvas></div>
+      <div class="tablewrap" style="margin-top:10px"><table id="tHist"></table></div>
+      <div class="row" style="margin-top:10px">
+        <label class="btn" for="csvIn">金利・為替CSVを読み込む</label>
+        <input type="file" id="csvIn" accept=".csv,text/csv" hidden>
+        <span class="note">形式: YYYY-MM,米10年,豪10年,日10年,USDJPY,USDAUD（ヘッダ行可）</span>
+      </div>
+    </div>
+
+    <div class="panel spec" id="spec" data-top="spec" data-sub="spec-intro" data-title="概要">
+      <h2>仕様書 — 前提・数式・データ</h2>
+      <div class="note" style="margin-bottom:10px">v0.3（2026-10-31）。<span class="pill data">実データ</span>は公開統計から取得した値、<span class="pill cal">回帰／校正</span>は実データから推定・校正した係数、<span class="pill assume">仮定</span>は統計に無いため置いた係数で差し替え前提。</div>
+
+      <h3>1. 目的と範囲</h3>
+      <p>外貨建て個人年金保険（定額・一時払中心）の新商品について、商品仕様・外部環境・競合を入力に、発売後5年間の新契約ANP・件数・粗利益を推定する。競合は商品テーブルで明示し、多項ロジットでシェアを配分する。</p>
+
+      <h3>2. 記号</h3>
+      <div class="tablewrap"><table class="spec-t">
+        <tr><th>記号</th><th>意味</th><th>既定値 / 出所</th></tr>
+        <tr><td>r<sub>US</sub>, r<sub>AU</sub>, r<sub>JP</sub></td><td>米・豪・日 10年国債利回り (%)</td><td>FRED 2026-09月平均 <span class="pill data">実データ</span></td></tr>
+        <tr><td>FX</td><td>USD/JPY（豪ドルは USD/JPY × USD/AUD で換算）</td><td>FRED EXJPUS, EXUSAL <span class="pill data">実データ</span></td></tr>
+        <tr><td>g<sub>FX</sub></td><td>想定円安トレンド (%/年)</td><td>0</td></tr>
+        <tr><td>s<sub>FC</sub></td><td>個人年金ANPに占める外貨建て比率</td><td>日米金利差連動（既定）または固定58% <span class="pill cal">校正</span>（§3参照）</td></tr>
+        <tr><td>D<sub>reg</sub></td><td>販売規制ダミー（2024年度以降=1）</td><td>継続 <span class="pill cal">回帰</span></td></tr>
+        <tr><td>r<sub>ref</sub></td><td>基準国債利回り（通貨に応じ r<sub>US</sub> or r<sub>AU</sub>）</td><td>—</td></tr>
+        <tr><td>c, T, sc, f, G, k</td><td>予定利率, 期間, 解約控除, 為替手数料, 最低保証, 販売手数料率</td><td>r<sub>ref</sub>（市場並み）, 10, 5, 25銭, 目標到達型110%, 5%</td></tr>
+        <tr><td>ρ, β, K</td><td>到達率, ブランド倍率, その他商品の合計質量</td><td>60%, 1.0, 2.0 <span class="pill assume">仮定</span></td></tr>
+        <tr><td>B<sub>0</sub>, q, λ</td><td>自社保有残高, 再購入率, 他社取込率</td><td>3,000億円, 40%, 3% <span class="pill assume">仮定</span></td></tr>
+        <tr><td>P̄</td><td>平均契約保険料 (万円)</td><td>800</td></tr>
+      </table></div>
+
+      <h3>3. 市場規模 <span class="pill cal">回帰</span></h3>
+      <p>生命保険協会「生命保険の動向」の個人年金保険 新契約ANP（図表13、億円）2016〜2024年度を、米10年債利回り年度平均・USD/JPY前年度比・2016年度ダミー（標準利率改定前の駆け込み）・規制ダミー（2024年度〜）に対数線形回帰する（最小二乗、9観測×5係数）。</p>
+      <pre>ln(ANP<sub>ind</sub>) = a + b·r<sub>US</sub> + c·ΔlnFX + d<sub>16</sub>·D<sub>2016</sub> + d<sub>reg</sub>·D<sub>reg</sub>
+M = exp(a + b·r<sub>US</sub> + c·g<sub>FX</sub>/100 + d<sub>reg</sub>·D<sub>reg</sub>) · s<sub>FC</sub>
+M<sub>ccy</sub> = M · w<sub>ccy</sub>,   w<sub>AUD</sub> = 1 / (1 + exp(−(ln(0.25/0.75) + 0.6·(r<sub>AU</sub> − r<sub>US</sub>)))),  w<sub>USD</sub> = 1 − w<sub>AUD</sub></pre>
+      <p>推定係数と当てはまりは実績表の下に表示（更新データを読み込むと再推定）。既定データでは米10年の係数は正、同年度の円安（ΔlnFX）の係数は負（円安局面では外貨の高値掴みを避けて新規が鈍る一方、到達解約が増える＝§6の循環で拾う）、規制ダミーは負（約×0.86）。通貨配分 w は豪米金利差で動く（係数0.6は<span class="pill assume">仮定</span>）。</p>
+      <p><b>外貨建て比率 s<sub>FC</sub></b> <span class="pill cal">校正</span>：金融庁「リスク性金融商品の個人向け販売等の状況に関する定量データ集」（2024年度9月期）では、2024年度上期の一時払保険販売額に占める外貨建ての割合は主要行等60.5%・地域銀行45.8%・大手証券91.6%（販売額加重で約58%）。ニッキン調査（地銀・第二地銀・大手信金の一時払終身）では外貨建て比率が2022年度下期83%から2024年度上期69%へ低下し、「金利ある世界」で円建てへ回帰している。この2点を日米10年金利差 Δ=r<sub>US</sub>−r<sub>JP</sub> で結ぶロジットを既定とする。</p>
+      <pre>s<sub>FC</sub> = 1 / (1 + exp(−(−4.8 + 1.75·Δ)))      校正点: Δ=3.65pt→83%, Δ=3.3pt→69%
+固定モード: s<sub>FC</sub> = スライダー値（既定58%＝金融庁2024上期の販売額加重）</pre>
+      <p>連動モードは2点校正のため外挿が大きい（現状のΔ≈1.9ptでは外貨建て比率が約20%まで落ちる）。金利差が縮む局面の方向感は実績と整合するが、水準は固定モードと併せて見ること。</p>
+
+      <h3>4. 商品魅力度と多項ロジット</h3>
+      <p>各商品 j（自社と競合テーブルの各行、同一通貨のもの）の効用 U<sub>j</sub> を線形で置く。基準の予定利率 c̄ は「競合テーブルの（公表利率 − 公表時点の国債利回り）の平均」を現在の国債利回りに足した値＝市場平均商品。その他の基準は T=10、sc=5、MVAあり、f=25銭、目標到達型110%、一時払。</p>
+      <pre>c̄ = r<sub>ref</sub> + mean<sub>j∈同通貨</sub>(rate<sub>j</sub> − ref<sub>j</sub>)
+U = 2.0·(c − c̄)
+  − 0.04·(T − 10) − 0.08·(sc − 5) − 0.10·[MVAあり]
+  − 0.9·(φ − φ̄)                 φ = f/100/FX·100（為替手数料の片道%）, φ̄ は50銭（市場標準）
+  + G                            G = {なし:−0.30, 目標到達型:0, 円元本確保:+0.25}
+  − 0.02·(目標値 − 110)          （目標到達型のみ。高い目標は到達しにくく敬遠される）
+  − 0.35·[平準払]
+
+share<sub>own</sub> = e<sup>U<sub>own</sub></sup> / ( e<sup>U<sub>own</sub></sup> + Σ<sub>j</sub> v<sub>j</sub>·e<sup>U<sub>j</sub></sup> + K )     v<sub>j</sub>=競合の販売力, K=その他質量</pre>
+      <p><b>校正</b> <span class="pill cal">校正</span>：2017年4月の標準利率引下げ（予定利率が概ね0.5pt低下）で個人年金の新契約件数は208万件→88万件（−58%）。本モデルで自社のみ予定利率を−0.5ptすると U=−1.0、既定の競合構成でシェアは約−60%となり整合する。円金利の影響は旧版の効用ペナルティから §3 の外貨建て比率へ移した（二重計上を避ける）。解約控除・為替手数料・保証・払込形態のウェイトは<span class="pill assume">仮定</span>。</p>
+      <p><b>ウェイトの推定（§4の係数の出所）</b>：商品別販売実績が非公開のため、販売担当者向けの選択型コンジョイント調査（別ページ「外貨建て年金 商品選好調査」、12問×3商品＋「提案しない」）で推定する。設計は回答者ごとに乱数シードから生成（水準: 予定利率差 −0.5〜+0.5pt、解約控除 0/4/7%、為替手数料 0/25/50銭、保証 なし/目標到達/元本確保、据置 5/10/20年、MVA あり/なし）。回答コード CJ1-シード-選択列-属性 からシミュレーター側で設計を復元し、条件付きロジット（ニュートン法、8係数）で最尤推定、標準誤差はヘッセ行列の逆行列から。推定係数は予定利率係数が2.0になるようスケールして（2017年の自然実験との整合）効用式に適用できる。推奨サンプル：30人以上（12問×30人＝360選択で主要係数のt値が2を超える見込み）。</p>
+      <p><b>会社横断回帰の試み（採用せず）</b>：調査の代替として、2024年度の各社新契約ANP（第一フロンティア2,294・ニッセイ・ウェルス2,043・メットライフ1,374・T&D 896・三井住友海上プライマリー約900（収入保険料からの推定）・ジブラルタ572・PGF525・マニュライフ397・オリックス321億円）を各社の米ドル建て主力商品の仕様（利率差・解約控除・為替手数料・手数料）に対数線形回帰した。結果は R²=0.17、全係数の標準誤差が係数を上回り（利率差 0.49±0.96、解約控除 −0.02±0.19、為替手数料25銭あたり +0.16±0.53）、有意な関係は検出できない。会社規模は親会社の販売網（第一生命・日本生命・SMBC日興等）でほぼ決まり、商品仕様の差を9社の横断では識別できないため、ウェイトの出所としては採用しない。</p>
+      <p><b>競合テーブルの既定値</b> <span class="pill data">実データ</span>：2026年7月16〜31日契約分（8社53件の横並び比較）と2026年10月1〜15日契約分の公表積立利率から、外貨建て一時払の主力商品を通貨別に収録。公表時点の10年国債（7月: 米4.60・豪4.92、10月: 米4.99・豪5.28）との差をモデルが使うため、金利が動いても相対位置が保たれる。多くは終身保険だが、銀行窓販の外貨建て一時払市場は終身・年金が同じ棚で競合するため同一市場として扱う。解約控除・MVA・為替手数料・販売手数料は各販売会社の「重要情報シート」から収録（日生: 解約控除4.0%→0／10年・為替50銭・手数料2.70%+0.30%×9年、メットライフ: 解約控除なし・50銭・4.0%+0.5%×7年、T&D: 4.5%→0.4%・為替手数料なし・3.5%+0.24%×9年、第一フロンティア: 5.5%→0・50銭・3.2〜3.4%+0.25%×9年、PGF: 7.0%→0.7%・50銭/1銭・3.1%+0.18%×14年、三井住友海上プライマリー: 4.0%→0.2%・50銭・3.5%+0.35%×9年、ニッセイ・ウェルス: 控除なし・50銭・3%+0.24%×15年）。全商品にMVAあり。マニュライフ・オリックス・ジブラルタは一部未取得（表の出所列に明記）、販売力は<span class="pill assume">仮定</span>。</p>
+
+      <h3>5. チャネル推進力</h3>
+      <pre>push = Σ<sub>i</sub> w<sub>i</sub> · (k / k̄)<sup>ε<sub>i</sub></sup>     k̄ = 同通貨競合の手数料率（累計）平均,  ε = {0.5, 0.4, 0.8} <span class="pill cal">粗校正</span></pre>
+      <p>校正根拠：生保各社は2025年4月から外貨建て一時払の販売手数料を「1年目3〜4.5%→約2.5%、2年目以降0.15〜0.55%→0.5〜0.7%」へ平準化（ニッキン 2024年11月）。この前後で地銀の外貨建て一時払終身の販売件数は2024年度下期に上期比−36.2%（68,832件、ニッキン調査）。初年度手数料の実質−40%に対し販売−36%なら ε≒0.9 が上限だが、金融庁指摘・業績評価見直し・預金回帰も同時に効いているため半分程度を手数料要因とみて銀行ε=0.5とした。証券は手数料依存が低く0.4、代理店は高く0.8（<span class="pill assume">仮定</span>）。k は初年度＋継続手数料の累計で扱い、競合テーブルの重要情報シート値（日生5.4%、第一フロンティア5.5%、T&D 5.7%、PGF 5.6%、三井住友海上プライマリー6.65%、メットライフ7.5%）の平均 k̄ と比較する。</p>
+
+      <h3>6. 売上（新規＋循環）</h3>
+      <pre>ANP<sub>new,t</sub> = M<sub>ccy</sub> · share<sub>own</sub> · push · ρ · β · ramp<sub>t</sub>          ramp = (0.5, 0.8, 1, 1, 1)
+p<sub>reach</sub> = clip(0.08 + 0.025·(c + g<sub>FX</sub> − 4) − 0.004·(目標値 − 110), 0.02, 0.45)   年間の目標到達確率 <span class="pill cal">校正</span>
+B<sub>t+1</sub> = B<sub>t</sub>·(1 − p<sub>reach</sub> − 0.03) + Prem<sub>t</sub>                             自社保有残高（解約・年金化3%/年）
+Prem<sub>recycle,t</sub> = B<sub>t</sub>·p<sub>reach</sub>·q + (M<sub>ccy</sub>·T·3)·p<sub>reach</sub>·λ           自社到達解約の再購入 + 他社到達解約の取込
+ANP<sub>t</sub> = ANP<sub>new,t</sub> + Prem<sub>recycle,t</sub> / T
+Prem<sub>t</sub> = ANP<sub>t</sub>·T（一時払）,  件数<sub>t</sub> = Prem<sub>t</sub> / P̄（平準払は ANP<sub>t</sub>/(P̄/T)）</pre>
+      <p>校正：金融庁モニタリング（2024年7月）は外貨建一時払の「購入後4年で約6割が解約・移行」、平均継続2.5年と報告（2019〜23年購入分、予定利率≈4%・円安≈+6%/年の局面）。年率に直すと 1−0.4<sup>1/4</sup>≈20% で、上式はその局面で約20%を返す。目標値の選択肢は105%、110〜200%（10%刻み）。他社の保有残高は「市場ANP×T×3年分」で近似。到達解約顧客への再販売比率が50%超の販売会社もあり（2024年4〜9月）、再購入率40%は<span class="pill assume">仮定</span>。</p>
+
+      <h3>7. 収益性（簡易）</h3>
+      <pre>i = r<sub>ref</sub> + spreadAdd（既定1.5: 各社の積立利率が10年国債と同水準以上であることから、運用は社債・超長期で国債+1.5%程度と校正）,  m = i − c − 0.3（事業費）
+π = min(1, 0.55 + 0.05·sc) − 0.5·p<sub>reach</sub>          平均残存率（解約控除で上がり、到達解約で下がる）
+k<sub>net</sub> = k − clawback·k·(1 − π)                   早期解約分の手数料戻入
+cost<sub>cap</sub> = capRatio · hurdle · min(T,10) · π
+粗利益率 = m·min(T,10)·π − k<sub>net</sub> − cost<sub>cap</sub> + 0.5·φ    （保険料比・期間累計%）
+想定粗利益 = Prem<sub>定常</sub> · 粗利益率</pre>
+      <p>MVAは市場整合的に中立（解約時の損益を契約者に転嫁）として0。積立・準備金・税・再保険は未考慮。仕様間の相対比較用で、EV／新契約価値の代替ではない。</p>
+
+      <h3>8. 感応度（トルネード）</h3>
+      <p>現在設定から各入力を1段階動かし、3年目ANPの変化率を降順表示（上位12件）。</p>
+
+      <h3>9. モンテカルロ（相関あり）</h3>
+      <pre>Δ = (Δr<sub>US</sub>, Δr<sub>AU</sub>, Δr<sub>JP</sub>, ln FX比) ~ N(μ, Σ)   年次、1,000経路×5年
+金利: r<sub>t+1</sub> = r<sub>t</sub> + 0.15·(r* − r<sub>t</sub>) + σ·ε,  r* = 直近5年の平均, σ = 12か月変化の標準偏差
+為替: ln(FX<sub>t+1</sub>/FX<sub>t</sub>) = g<sub>FX</sub>/100 + σ<sub>FX</sub>·ε
+相関 Σ: 月次データの12か月変化（重複あり）から推定（コレスキー分解）  <span class="pill cal">推定</span>
+推定値は実績表の下に表示。平均回帰速度0.15のみ <span class="pill assume">仮定</span></pre>
+
+      <h3>10. データ</h3>
+      <div class="tablewrap"><table class="spec-t">
+        <tr><th>系列</th><th>出所</th><th>期間</th><th>更新方法</th></tr>
+        <tr><td>米10年</td><td>FRED GS10（月平均）</td><td>2015-01〜2026-09</td><td rowspan="5">「金利・為替CSVを読み込む」で差し替え（YYYY-MM,米,豪,日,USDJPY,USDAUD）</td></tr>
+        <tr><td>豪10年</td><td>FRED IRLTLT01AUM156N</td><td>同上</td></tr>
+        <tr><td>日10年</td><td>FRED IRLTLT01JPM156N</td><td>同上</td></tr>
+        <tr><td>USD/JPY</td><td>FRED EXJPUS</td><td>同上</td></tr>
+        <tr><td>USD/AUD</td><td>FRED EXUSAL</td><td>同上</td></tr>
+        <tr><td>個人年金 新契約ANP</td><td>生命保険協会「生命保険の動向」2021・2024・2025年版 図表13</td><td>2016〜2024年度</td><td>コード内 IND 配列</td></tr>
+        <tr><td>個人年金 新契約件数</td><td>同 図表7（2019年度〜は転換後除く、2016〜18年度は転換後含む）</td><td>2016〜2024年度</td><td>同上</td></tr>
+        <tr><td>セグメント別ANP 2023年度</td><td>ニッセイ基礎研「2023年度生命保険会社決算の概要」</td><td>2023年度</td><td>参考</td></tr>
+        <tr><td>外貨建て一時払の販売割合</td><td>金融庁「リスク性金融商品の個人向け販売等の状況に関する定量データ集」2024年度9月期</td><td>2024年度上期</td><td>固定モードの既定値58%</td></tr>
+        <tr><td>地銀の外貨建て比率・販売件数</td><td>ニッキン調査（金融ジャーナル2025年1月号、ニッキン2025年）</td><td>2022下期〜2024下期</td><td>連動モードの校正、チャネル感応度</td></tr>
+        <tr><td>手数料体系の改定</td><td>ニッキン 2024年11月15日号</td><td>2025年4月〜</td><td>チャネル感応度の校正</td></tr>
+        <tr><td>各社積立利率</td><td>各社公式サイト（2026年7月横並び比較・2026年10月比較記事）</td><td>2026年7月・10月</td><td>競合テーブル既定値</td></tr>
+        <tr><td>各社の解約控除・MVA・為替手数料・販売手数料</td><td>販売会社の重要情報シート（多摩信金・焼津信金・静清信金・兵庫信金・SMBC日興）</td><td>2024-10〜2026-04</td><td>競合テーブル既定値、手数料基準 k̄</td></tr>
+        <tr><td>購入後4年の解約率・平均継続期間・目標値の選択肢</td><td>金融庁 モニタリング結果 2024年7月</td><td>2019〜23年購入分</td><td>到達確率の校正</td></tr>
+      </table></div>
+
+      <h3>11. 画面仕様</h3>
+      <ul>
+        <li>左レール：外部環境／商品仕様／販売体制・保有・収益前提。入力のたびに全出力を再計算（モンテカルロは手動実行）。</li>
+        <li>効用ウェイト推定：回答コードを貼って条件付きロジットで推定→適用。動作確認用に既定ウェイトから合成回答を生成するボタンあり。</li>
+        <li>競合テーブル：カタログ（competitors.json、ページと一緒に公開）から通貨・種類・チャネル・解約控除・為替手数料・保証・利率の確度・販売力で絞り込んで取得。取得後は行の追加・編集・削除が可能。通貨が自社と同じ行だけがシェア計算に入る。カタログの更新は JSON を差し替えて再公開（定期更新タスク化も可）。</li>
+        <li>サマリータイル：3年目のANP（うち循環分、未校正ウェイトを½〜2倍に振ったときの幅も併記）・払込総額・件数・シェア・粗利益率・想定粗利益。粗利益率 8%超=緑、3〜8%=橙、3%未満=赤。</li>
+        <li>年度別予測：棒（新規ANP＋循環ANPの積上げ）と折れ線（件数）、表、CSVコピー。</li>
+        <li>シナリオ：名前を付けて保存（ブラウザ内）、読込・削除、全件比較表、CSVコピー、JSON書出し／読込み。</li>
+        <li>不確実性：P10〜P90帯、中央値、決定論的予測。</li>
+        <li>実績データ：月次チャート、回帰の当てはまりチャート（実績 vs 回帰値）、年度表、CSV取込。</li>
+        <li>単一HTML・外部依存は Chart.js のみ。</li>
+      </ul>
+
+      <h3>12. 既知の限界</h3>
+      <ul>
+        <li>市場回帰は9観測に5係数で自由度が小さい。係数の符号・大きさは年度を追加して再確認すること。</li>
+        <li>外貨建て比率の連動式は地銀2点の校正で外挿が大きい。固定モードと併せて見ること。銀行・証券以外（来店型代理店・直販）の比率は未反映。</li>
+        <li>競合テーブルの利率・期間・解約控除・為替手数料・手数料は公表値だが、三井住友海上プライマリーとニッセイ・ウェルスの利率、マニュライフ・オリックスの手数料系は未取得（市場標準で仮置き、出所列に明記）。販売力は置き値。</li>
+        <li>魅力度ウェイトは既定では予定利率のみ校正済み。コンジョイント調査で推定・適用するまで他は置き値。調査は「販売担当者の提案意向」を測るもので、最終顧客の選好とは一致しない可能性がある。チャネル感応度は粗い校正。再購入率・到達率の為替依存は置き値。</li>
+        <li>循環モデルは到達確率を簡略化（為替の経路・契約時点の為替水準を無視）。</li>
+        <li>収益性は粗利益の近似。準備金・税・再保険・ヘッジコストは未考慮。</li>
+      </ul>
+    </div>
+</div>
+<div class="pane-nav" id="panenav"></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// ===== Historical data (monthly, from 2015-01). Source: FRED GS10, IRLTLT01AUM156N, IRLTLT01JPM156N, EXJPUS, EXUSAL =====
+const HIST = {
+ start:[2015,1],
+ us10:[1.88,1.98,2.04,1.94,2.20,2.36,2.32,2.17,2.17,2.07,2.26,2.24,2.09,1.78,1.89,1.81,1.81,1.64,1.50,1.56,1.63,1.76,2.14,2.49,2.43,2.42,2.48,2.30,2.30,2.19,2.32,2.21,2.20,2.36,2.35,2.40,2.58,2.86,2.84,2.87,2.98,2.91,2.89,2.89,3.00,3.15,3.12,2.83,2.71,2.68,2.57,2.53,2.40,2.07,2.06,1.63,1.70,1.71,1.81,1.86,1.76,1.50,0.87,0.66,0.67,0.73,0.62,0.65,0.68,0.79,0.87,0.93,1.08,1.26,1.61,1.64,1.62,1.52,1.32,1.28,1.37,1.58,1.56,1.47,1.76,1.93,2.13,2.75,2.90,3.14,2.90,2.90,3.52,3.98,3.89,3.62,3.53,3.75,3.66,3.46,3.57,3.75,3.90,4.17,4.38,4.80,4.50,4.02,4.06,4.21,4.21,4.54,4.48,4.31,4.25,3.87,3.72,4.10,4.36,4.39,4.63,4.45,4.28,4.28,4.42,4.38,4.39,4.26,4.12,4.06,4.09,4.14,4.21,4.13,4.25,4.32,4.48,4.47,4.60,4.68,4.99],
+ au10:[2.622,2.49,2.475,2.41,2.882,2.985,2.922,2.738,2.724,2.657,2.889,2.852,2.708,2.465,2.561,2.512,2.322,2.125,1.936,1.892,2.004,2.231,2.535,2.799,2.711,2.738,2.804,2.557,2.548,2.421,2.664,2.626,2.71,2.768,2.565,2.583,2.747,2.845,2.713,2.734,2.79,2.697,2.637,2.59,2.631,2.682,2.683,2.431,2.271,2.126,1.957,1.865,1.655,1.386,1.32,0.959,1.035,1.037,1.152,1.202,1.159,0.984,0.884,0.854,0.903,0.928,0.897,0.905,0.894,0.802,0.856,0.976,1.053,1.334,1.707,1.676,1.66,1.531,1.254,1.135,1.282,1.71,1.806,1.609,1.888,2.111,2.5,3.008,3.381,3.767,3.429,3.361,3.747,3.919,3.696,3.551,3.604,3.702,3.468,3.343,3.5,3.916,4.036,4.128,4.211,4.633,4.578,4.187,4.148,4.141,4.045,4.268,4.325,4.242,4.326,3.976,3.922,4.267,4.544,4.313,4.481,4.423,4.421,4.267,4.35,4.208,4.291,4.275,4.298,4.234,4.416,4.719,4.75,4.758,4.926,4.969,4.982,4.831,4.919,5.015,5.283],
+ jp10:[0.275,0.33,0.4,0.34,0.39,0.455,0.41,0.38,0.35,0.3,0.3,0.27,0.095,-0.065,-0.05,-0.085,-0.12,-0.23,-0.195,-0.07,-0.085,-0.05,0.02,0.04,0.085,0.05,0.065,0.015,0.04,0.075,0.075,0.01,0.06,0.065,0.035,0.045,0.08,0.045,0.045,0.05,0.03,0.03,0.06,0.11,0.125,0.13,0.085,-0.01,0,-0.015,-0.095,-0.045,-0.095,-0.165,-0.16,-0.28,-0.215,-0.15,-0.08,-0.025,-0.065,-0.155,0.005,-0.04,0,0.03,0.01,0.045,0.015,0.04,0.03,0.02,0.055,0.15,0.12,0.09,0.08,0.05,0.015,0.02,0.065,0.095,0.05,0.07,0.17,0.18,0.21,0.215,0.235,0.225,0.18,0.22,0.24,0.245,0.25,0.41,0.49,0.5,0.32,0.385,0.43,0.395,0.595,0.64,0.765,0.95,0.66,0.62,0.73,0.71,0.725,0.87,1.07,1.05,1.045,0.89,0.855,0.935,1.05,1.09,1.245,1.37,1.485,1.31,1.5,1.42,1.545,1.6,1.645,1.655,1.805,2.06,2.24,2.11,2.345,2.515,2.65,2.67,2.79,2.94,3.05],
+ usdjpy:[118.25,118.76,120.39,119.51,120.80,123.72,123.31,123.00,120.15,120.05,122.64,121.64,118.23,114.62,112.93,109.55,108.85,105.35,104.19,101.24,101.78,103.91,108.44,116.00,114.87,112.91,112.92,110.09,112.24,110.91,112.42,109.83,110.78,112.91,112.82,112.94,110.87,107.97,106.05,107.66,109.69,110.06,111.52,111.00,112.10,112.72,113.34,112.20,108.96,110.44,111.14,111.64,109.97,108.07,108.29,106.19,107.54,108.14,108.86,109.10,109.27,110.03,107.67,107.74,107.20,107.58,106.68,106.01,105.59,105.21,104.41,103.80,103.79,105.38,108.70,109.04,109.11,110.11,110.21,109.85,110.16,113.12,113.97,113.83,114.83,115.28,118.58,126.37,128.85,133.96,136.71,135.28,143.28,147.05,142.45,134.91,130.45,133.05,133.66,133.47,137.05,141.36,140.94,144.78,147.85,149.59,149.68,143.98,146.29,149.62,149.82,153.89,155.87,157.86,157.52,146.26,142.95,149.89,153.71,153.81,156.48,151.57,149.06,144.13,144.88,144.48,147.20,147.48,147.86,151.35,155.14,155.92,156.65,155.10,158.68,159.12,158.15,160.77,162.33,158.85,156.42],
+ usdaud:[0.8064,0.7797,0.7724,0.774,0.7891,0.7715,0.7407,0.7295,0.7059,0.72,0.7146,0.7247,0.7011,0.7134,0.7504,0.7664,0.7318,0.7401,0.7529,0.7629,0.7591,0.7615,0.7532,0.7346,0.7465,0.7664,0.7622,0.7534,0.7437,0.7562,0.7807,0.7915,0.7974,0.7788,0.762,0.7648,0.7956,0.7867,0.7759,0.7684,0.7525,0.7498,0.7403,0.7325,0.7206,0.7111,0.7247,0.7169,0.7151,0.7136,0.7082,0.7111,0.6945,0.6946,0.6978,0.6775,0.6815,0.6798,0.6827,0.6887,0.6851,0.6664,0.6218,0.6312,0.6517,0.6899,0.704,0.7203,0.7224,0.7121,0.727,0.7532,0.7726,0.7753,0.771,0.7701,0.7763,0.7643,0.7417,0.7304,0.7312,0.7412,0.7307,0.7155,0.718,0.7169,0.7374,0.7364,0.7041,0.7025,0.6856,0.6961,0.6671,0.637,0.6596,0.6748,0.6955,0.6893,0.6676,0.6688,0.6643,0.6713,0.6742,0.6486,0.6425,0.6347,0.6508,0.6693,0.6636,0.6522,0.6558,0.6507,0.6626,0.6642,0.6673,0.6658,0.677,0.67,0.6528,0.6334,0.6231,0.6301,0.63,0.6291,0.6435,0.6509,0.6536,0.6495,0.6598,0.6547,0.6502,0.6643,0.6792,0.706,0.7017,0.7093,0.7188,0.7025,0.6971,0.7103,0.7115]
+};
+// 生命保険協会「生命保険の動向」個人年金保険 新規契約ANP(億円, 図表13), 件数(万件, 図表7; 2019年度〜転換後除く, 2016-18は転換後含む)
+const IND = [{fy:2016,anp:8891,cnt:208,note:'駆込'},{fy:2017,anp:4236,cnt:88},{fy:2018,anp:5016,cnt:99},{fy:2019,anp:3928,cnt:91},{fy:2020,anp:2610,cnt:67},{fy:2021,anp:3246,cnt:86},{fy:2022,anp:4036,cnt:99},{fy:2023,anp:6327,cnt:132},{fy:2024,anp:6008,cnt:147,note:'規制'}];
+
+function monthLabel(i){const y=HIST.start[0]+Math.floor((HIST.start[1]-1+i)/12),m=(HIST.start[1]-1+i)%12+1;return y+'-'+String(m).padStart(2,'0')}
+function fyAvg(series,fy){let s=0,n=0;for(let i=0;i<series.length;i++){const y=HIST.start[0]+Math.floor((HIST.start[1]-1+i)/12),m=(HIST.start[1]-1+i)%12+1;const f=m>=4?y:y-1;if(f===fy){s+=series[i];n++}}return n?s/n:null}
+function latest(series){return series[series.length-1]}
+
+// ===== Market regression: ln(ANP)=a+b*rUS+c*dlnFX+d16*D2016+dreg*Dreg (OLS via normal equations) =====
+let REG={coef:[0,0,0,0,0],r2:0,fit:[],n:0};
+function solve(A,b){const n=A.length;const M=A.map((r,i)=>[...r,b[i]]);for(let i=0;i<n;i++){let p=i;for(let k=i+1;k<n;k++)if(Math.abs(M[k][i])>Math.abs(M[p][i]))p=k;[M[i],M[p]]=[M[p],M[i]];const d=M[i][i]||1e-12;for(let k=i+1;k<n;k++){const f=M[k][i]/d;for(let j=i;j<=n;j++)M[k][j]-=f*M[i][j]}}const x=new Array(n).fill(0);for(let i=n-1;i>=0;i--){let s=M[i][n];for(let j=i+1;j<n;j++)s-=M[i][j]*x[j];x[i]=s/(M[i][i]||1e-12)}return x}
+function regressors(fy){const r=fyAvg(HIST.us10,fy),fx=fyAvg(HIST.usdjpy,fy),fx0=fyAvg(HIST.usdjpy,fy-1);if(r==null||fx==null||fx0==null)return null;return [1,r,Math.log(fx/fx0),fy===2016?1:0,fy>=2024?1:0]}
+function fitMarket(){
+  const X=[],Y=[],FY=[];IND.forEach(d=>{const x=regressors(d.fy);if(x){X.push(x);Y.push(Math.log(d.anp));FY.push(d.fy)}});
+  const k=5,XtX=Array.from({length:k},()=>new Array(k).fill(0)),XtY=new Array(k).fill(0);
+  X.forEach((x,i)=>{for(let a=0;a<k;a++){XtY[a]+=x[a]*Y[i];for(let b=0;b<k;b++)XtX[a][b]+=x[a]*x[b]}});
+  const coef=solve(XtX,XtY);const fit=X.map(x=>x.reduce((s,v,i)=>s+v*coef[i],0));
+  const my=Y.reduce((a,b)=>a+b)/Y.length;let ssr=0,sst=0;Y.forEach((y,i)=>{ssr+=(y-fit[i])**2;sst+=(y-my)**2});
+  REG={coef,r2:1-ssr/sst,fit:fit.map((f,i)=>({fy:FY[i],fit:Math.exp(f),act:Math.exp(Y[i])})),n:Y.length};
+}
+
+// ===== Competitors (generic placeholders — replace with real specs) =====
+const DEFAULT_COMP=[
+ // カタログ competitors.json と同内容（JSONが読めない環境向けの埋め込み）
+ {name:'第一フロンティア プレミアプレゼント4（通貨指定型終身）',ccy:'USD',rate:5.86,ref:4.99,asof:'2026-10',term:30,sc:5.5,mva:1,fxfee:50,guar:'target',target:110,ptype:'single',comm:5.5,power:1.5,src:'多摩信金 重要情報シート2025-04。販売力は2024年度新契約ANP 2,294億円（全社最大級）から'},
+ {name:'日本生命 ロングドリームGOLD3（指定通貨建終身）',ccy:'USD',rate:5.05,ref:4.99,asof:'2026-10',term:10,sc:4.0,mva:1,fxfee:50,guar:'target',target:110,ptype:'single',comm:5.4,power:1.4,src:'焼津信金 重要情報シート2026-04。全社新契約ANP 2,339億円のうち窓販分は非開示のため販売力は推定'},
+ {name:'T&D 生涯プレミアムワールド6',ccy:'USD',rate:5.24,ref:4.99,asof:'2026-10',term:10,sc:4.5,mva:1,fxfee:0,guar:'principal',target:110,ptype:'single',comm:5.7,power:0.6,src:'静清信金 重要情報シート2026-04。販売力は2024年度新契約ANP 896億円から'},
+ {name:'メットライフ ビー ウィズ ユー プラス2',ccy:'USD',rate:4.64,ref:4.6,asof:'2026-07',term:20,sc:0.0,mva:1,fxfee:50,guar:'target',target:110,ptype:'single',comm:7.5,power:1.2,src:'SMBC日興 重要情報シート2024-10'},
+ {name:'PGF生命 基本・連生選択型終身',ccy:'USD',rate:4.91,ref:4.6,asof:'2026-07',term:20,sc:7.0,mva:1,fxfee:50,guar:'none',target:110,ptype:'single',comm:5.6,power:0.8,src:'SMBC日興 重要情報シート2026-04'},
+ {name:'三井住友海上プライマリー おおきな、まごころ3',ccy:'USD',rate:5.1,ref:4.99,asof:'利率は仮',term:10,sc:4.0,mva:1,fxfee:50,guar:'none',target:110,ptype:'single',comm:6.65,power:1.3,src:'兵庫信金 重要情報シート（利率は市場平均で仮置き）'},
+ {name:'ニッセイ・ウェルス 賢者の終身保険',ccy:'USD',rate:4.73,ref:4.99,asof:'2026-10',term:10,sc:0.0,mva:1,fxfee:50,guar:'none',target:110,ptype:'single',comm:6.6,power:1.3,src:'SMBC日興 重要情報シート（利率はNKフィエスタ2026-10版の例示4.73%を準用。販売力は2024年度新契約ANP 2,043億円から）'},
+ {name:'ジブラルタ 積立利率更改型(23)',ccy:'USD',rate:4.51,ref:4.6,asof:'2026-07',term:20,sc:7.0,mva:1,fxfee:50,guar:'none',target:110,ptype:'single',comm:5.6,power:0.8,src:'PGF（同グループ）の条件を準用'},
+ {name:'マニュライフ 告知ありタイプ',ccy:'USD',rate:5.35,ref:4.6,asof:'2026-07',term:10,sc:0,mva:1,fxfee:25,guar:'target',target:110,ptype:'single',comm:6.0,power:0.9,src:'契約締結前交付書面（銀行向け）: 解約控除なしだが契約初期費用3.8〜8.5%を前払、為替は払込50銭・受取1銭（平均25銭で入力）。手数料率は未開示'},
+ {name:'オリックス 米ドル建',ccy:'USD',rate:4.4,ref:4.6,asof:'2026-07',term:10,sc:5.0,mva:1,fxfee:50,guar:'none',target:110,ptype:'single',comm:6.0,power:0.5,src:'利率のみ公表値。他は標準値'},
+ {name:'第一フロンティア プレミアプレゼント4（通貨指定型終身）',ccy:'AUD',rate:5.65,ref:5.28,asof:'2026-10',term:20,sc:5.5,mva:1,fxfee:50,guar:'target',target:110,ptype:'single',comm:5.5,power:1.5,src:'多摩信金 重要情報シート2025-04。販売力は2024年度新契約ANP 2,294億円（全社最大級）から'},
+ {name:'日本生命 ロングドリームGOLD3（指定通貨建終身）',ccy:'AUD',rate:5.28,ref:5.28,asof:'2026-10',term:10,sc:4.0,mva:1,fxfee:50,guar:'target',target:110,ptype:'single',comm:5.4,power:1.4,src:'焼津信金 重要情報シート2026-04。全社新契約ANP 2,339億円のうち窓販分は非開示のため販売力は推定'},
+ {name:'T&D 生涯プレミアムワールド6',ccy:'AUD',rate:5.51,ref:5.28,asof:'2026-10',term:20,sc:4.5,mva:1,fxfee:0,guar:'principal',target:110,ptype:'single',comm:5.7,power:0.6,src:'静清信金 重要情報シート2026-04。販売力は2024年度新契約ANP 896億円から'},
+ {name:'三井住友海上プライマリー おおきな、まごころ3',ccy:'AUD',rate:5.4,ref:5.28,asof:'利率は仮',term:10,sc:4.0,mva:1,fxfee:50,guar:'none',target:110,ptype:'single',comm:6.65,power:1.3,src:'兵庫信金 重要情報シート（利率は市場平均で仮置き）'},
+ {name:'マニュライフ 告知ありタイプ',ccy:'AUD',rate:5.38,ref:4.92,asof:'2026-07',term:10,sc:0,mva:1,fxfee:25,guar:'target',target:110,ptype:'single',comm:6.0,power:0.9,src:'契約締結前交付書面（銀行向け）: 解約控除なしだが契約初期費用3.8〜8.5%を前払、為替は払込50銭・受取1銭（平均25銭で入力）。手数料率は未開示'},
+ {name:'第一フロンティア プレミアジャーニー（通貨指定型 個人年金）',ccy:'USD',rate:5.0,ref:4.99,asof:'利率は仮',term:10,sc:4.4,mva:1,fxfee:50,guar:'none',target:110,ptype:'single',comm:5.45,power:1.3,src:'静清信金 重要情報シート（解約控除4.4%→0.22%、手数料3.2%+0.25%×9年）'},
+ {name:'住友生命 たのしみ未来グローバル（平準払 外貨建年金）',ccy:'USD',rate:4.0,ref:4.99,asof:'利率は仮（最低保証1.5%）',term:10,sc:10,mva:0,fxfee:50,guar:'none',target:110,ptype:'level',comm:2.8,power:1.0,src:'静清信金 重要情報シート（解約控除31%→0.03%・10年、手数料2.43%+0.10%×4年）'},
+ {name:'ニッセイ・ウェルス NKフィエスタ（金利連動型年金 AⅡ型）',ccy:'USD',rate:4.73,ref:4.99,asof:'2026-10',term:10,sc:0,mva:1,fxfee:50,guar:'none',target:110,ptype:'single',comm:5.0,power:1.3,src:'SMBC日興 重要情報シート2026-10（解約控除なし、為替50銭・米ドル受取は無料、手数料3.5%+0.15〜0.4%×9年）'},
+ {name:'ニッセイ・ウェルス NKフィエスタ（金利連動型年金 AⅡ型）',ccy:'AUD',rate:4.31,ref:5.28,asof:'2026-10',term:10,sc:0,mva:1,fxfee:50,guar:'none',target:110,ptype:'single',comm:5.0,power:1.3,src:'SMBC日興 重要情報シート2026-10'},
+ {name:'三井住友海上プライマリー やさしさ、つなぐ2（生存給付金付終身）',ccy:'USD',rate:3.34,ref:4.99,asof:'2025-04版例示（70歳・生存給付15回）',term:10,sc:6.5,mva:1,fxfee:50,guar:'none',target:110,ptype:'single',comm:5.3,power:1.3,src:'兵庫信金 重要情報シート2025-04（解約控除6.5%→0.1%、手数料3.5%+0.2%×9年）。利率は生存給付型のため横並び比較には不向き'}
+];
+let COMP=JSON.parse(JSON.stringify(DEFAULT_COMP));
+let CATALOG={updated:'',items:DEFAULT_COMP.map(q=>({...q,company:q.name.split(' ')[0],type:'終身',channel:'銀行窓販',rateKnown:!/仮/.test(q.asof)}))};
+function loadCatalog(){try{fetch('competitors.json').then(r=>r.ok?r.json():null).then(j=>{if(j&&j.items){CATALOG=j;document.getElementById('catalogNote').textContent=`カタログ ${j.items.length}件（${j.updated}更新）`}}).catch(()=>{})}catch(e){}}
+function applyFilter(){
+  const g=id=>document.getElementById(id).value;
+  const ccy=g('fCcy')==='same'?S.ccy:g('fCcy');
+  const rows=CATALOG.items.filter(q=>(ccy==='all'||q.ccy===ccy)&&(g('fType')==='all'||q.type===g('fType'))&&(g('fChannel')==='all'||q.channel===g('fChannel'))
+    &&(g('fSc')==='all'||(g('fSc')==='yes'?q.sc>0:q.sc===0))&&(g('fFx')==='all'||q.fxfee<=+g('fFx'))&&(g('fGuar')==='all'||q.guar===g('fGuar'))&&(g('fRate')==='all'||q.rateKnown!==false)&&(q.power>=+(g('fPower')||0)));
+  COMP=rows.map(q=>({name:q.name,ccy:q.ccy,rate:q.rate,ref:q.ref,asof:q.asof,term:q.term,sc:q.sc,mva:q.mva,fxfee:q.fxfee,guar:q.guar,target:q.target,ptype:q.ptype,comm:q.comm,power:q.power,src:q.src}));
+  renderComp();render();toast(rows.length+'件を取得しました');
+}
+document.getElementById('applyFilter').addEventListener('click',applyFilter);
+document.getElementById('showCatalog').addEventListener('click',()=>{['fCcy','fType','fChannel','fSc','fFx','fGuar','fRate'].forEach(id=>document.getElementById(id).value='all');document.getElementById('fPower').value=0;applyFilter()});
+
+// ===== State =====
+const S={ccy:'USD',ptype:'single',mva:1,guar:'target',reg:1,fcmode:'link'};
+const sliders=['us10','au10','jp10','usdjpy','fxtrend','fcshare','credit','term','sc','fxfee','target','comm','avgprem','bank','sec','reach','other','brand','launch','inforce','recap','poach','spreadAdd','clawback','capratio','hurdle'];
+const fmt={us10:v=>v.toFixed(2),au10:v=>v.toFixed(2),jp10:v=>v.toFixed(2),usdjpy:v=>v.toFixed(1),fxtrend:v=>(v>0?'+':'')+v.toFixed(1),fcshare:v=>v+'%',credit:v=>v.toFixed(2),term:v=>v+'年',sc:v=>v.toFixed(1)+'%',fxfee:v=>v+'銭',target:v=>v+'%',comm:v=>v.toFixed(2)+'%',avgprem:v=>v+'万円',bank:v=>v+'%',sec:v=>v+'%',reach:v=>v+'%',other:v=>v.toFixed(2),brand:v=>'×'+v.toFixed(2),launch:v=>v+'年度',inforce:v=>v.toLocaleString('ja-JP')+'億円',recap:v=>v+'%',poach:v=>v+'%',spreadAdd:v=>'+'+v.toFixed(1),clawback:v=>v+'%',capratio:v=>v.toFixed(1)+'%',hurdle:v=>v.toFixed(1)+'%'};
+function val(id){return parseFloat(document.getElementById(id).value)}
+function setVal(id,v){document.getElementById(id).value=v}
+function readState(){const o={...S};sliders.forEach(id=>o[id]=val(id));o.comp=COMP;return o}
+function resetEnv(){setVal('us10',latest(HIST.us10));setVal('au10',latest(HIST.au10));setVal('jp10',latest(HIST.jp10));setVal('usdjpy',latest(HIST.usdjpy));setVal('fxtrend',0)}
+function defaultCredit(){const ref=S.ccy==='USD'?val('us10'):val('au10');setVal('credit',Math.max(0.5,Math.round(ref*20)/20))}
+
+// ===== Empirical dynamics from HIST (12-month changes) =====
+let DYN={corr:[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]],sig:[0.6,0.6,0.35,0.09],mean:[4,4.3,1.8],n:0};
+function fitDynamics(){
+  const n=HIST.us10.length;if(n<36)return;const X=[[],[],[],[]];
+  for(let i=12;i<n;i++){X[0].push(HIST.us10[i]-HIST.us10[i-12]);X[1].push(HIST.au10[i]-HIST.au10[i-12]);X[2].push(HIST.jp10[i]-HIST.jp10[i-12]);X[3].push(Math.log(HIST.usdjpy[i]/HIST.usdjpy[i-12]))}
+  const mu=X.map(a=>a.reduce((p,q)=>p+q)/a.length);const sd=X.map((a,k)=>Math.sqrt(a.reduce((p,q)=>p+(q-mu[k])**2,0)/(a.length-1)));
+  const corr=X.map((a,i)=>X.map((b,j)=>{let c=0;for(let t=0;t<a.length;t++)c+=(a[t]-mu[i])*(b[t]-mu[j]);return c/((a.length-1)*sd[i]*sd[j])}));
+  const avg=arr=>{const a=arr.slice(-60);return a.reduce((p,q)=>p+q)/a.length};
+  DYN={corr,sig:sd,mean:[avg(HIST.us10),avg(HIST.au10),avg(HIST.jp10)],n:X[0].length};
+}
+// 外貨建て比率（日米10年金利差のロジット）。校正点: 2022下期 83%(差3.65pt), 2024上期 69%(差3.3pt) — ニッキン調査(地銀 一時払終身)
+const FC_A=-4.8,FC_B=1.75;
+function fcShareLinked(rUS,rJP){return 1/(1+Math.exp(-(FC_A+FC_B*(rUS-rJP))))}
+
+// ===== Core model =====
+const RAMP=[0.5,0.8,1,1,1];
+const clip=(v,a,b)=>Math.max(a,Math.min(b,v));
+const W_DEFAULT={credit:2.0,term:-0.04,sc:-0.08,mva:-0.10,phi:-0.9,guarNone:-0.3,guarTarget:0,guarPrincipal:0.25,target:-0.02,level:-0.35,src:'既定（予定利率のみ2017年改定で校正、他は仮定）'};
+let W={...W_DEFAULT};
+function utility(q,env){ // q:{credit,term,sc,mva,fxfee,guar,target,ptype}; env:{ref,rate,cbar}
+  const phi=q.fxfee/100/env.rate*100, phiBar=50/100/env.rate*100;
+  const G={none:W.guarNone,target:W.guarTarget,principal:W.guarPrincipal}[q.guar];
+  return W.credit*(q.credit-env.cbar)+W.term*(q.term-10)+W.sc*(q.sc-5)+(q.mva?W.mva:0)+W.phi*(phi-phiBar)+G+(q.guar==='target'?W.target*(q.target-110):0)+(q.ptype==='level'?W.level:0);
+}
+function model(p){
+  const ref=p.ccy==='USD'?p.us10:p.au10;
+  const rate=p.ccy==='USD'?p.usdjpy:p.usdjpy*latest(HIST.usdaud);
+  const [a,b,c,d16,dreg]=REG.coef;
+  const fc=p.fcmode==='link'?fcShareLinked(p.us10,p.jp10):p.fcshare/100;
+  const Mall=Math.exp(a+b*p.us10+c*p.fxtrend/100+dreg*p.reg)*fc;
+  const wAUD=1/(1+Math.exp(-(Math.log(0.25/0.75)+0.6*(p.au10-p.us10))));
+  const wccy=p.ccy==='AUD'?wAUD:1-wAUD;
+  const mkt=Mall*wccy;
+  const comps=(p.comp||[]).filter(q=>q.ccy===p.ccy);
+  const cbar=ref+(comps.length?comps.reduce((s,q)=>s+(q.rate-q.ref),0)/comps.length:0); // 市場平均の予定利率（競合の国債対比差の平均）
+  const env={ref,rate,cbar};
+  const Uown=utility(p,env);
+  let denom=Math.exp(Uown)+p.other;
+  comps.forEach(q=>{denom+=q.power*Math.exp(utility({...q,credit:ref+(q.rate-q.ref)},env))});
+  const share=Math.exp(Uown)/denom;
+  const bank=p.bank,sec=p.sec,agent=Math.max(0,100-bank-sec),tot=bank+sec+agent||1;
+  const kbar=comps.length?comps.reduce((s,q)=>s+q.comm,0)/comps.length:6; // 競合の手数料率平均（累計）
+  const cr=p.comm/kbar;
+  const push=(bank*Math.pow(cr,0.5)+sec*Math.pow(cr,0.4)+agent*Math.pow(cr,0.8))/tot; // 感応度は地銀2024下期 −36%から粗校正
+  const steadyNew=mkt*share*push*(p.reach/100)*p.brand;
+  // recycling
+  const pReach=clip(0.08+0.025*(p.credit+p.fxtrend-4)-(p.guar==='target'?0.004*(p.target-110):0),0.02,0.45); // 金融庁「購入後4年で約6割解約」(年率約20%, 予定利率≈4%・円安≈+6%/年の局面)で校正
+  const otherInforce=mkt*p.term*3;
+  let B=p.inforce;const years=[];let cum=0;
+  for(let i=0;i<5;i++){
+    const fy=p.launch+i;
+    const anpNew=steadyNew*RAMP[i];
+    const premRec=B*pReach*(p.recap/100)+otherInforce*pReach*(p.poach/100);
+    const anpRec=premRec/p.term;
+    const anp=anpNew+anpRec;
+    const premTotal=p.ptype==='single'?anp*p.term:anp;
+    const cnt=p.ptype==='single'?premTotal*1e8/(p.avgprem*1e4):anp*1e8/(p.avgprem*1e4/p.term);
+    cum+=anp;years.push({fy,anp,anpNew,anpRec,premTotal,cnt,cum,B});
+    B=B*(1-pReach-0.03)+premTotal;
+  }
+  // profitability
+  const invYield=ref+p.spreadAdd,spread=invYield-p.credit-0.3;
+  const H=Math.min(p.term,10);
+  const persist=clip(Math.min(1,0.55+0.05*p.sc)-0.5*pReach,0.2,1);
+  const kNet=p.comm-(p.clawback/100)*p.comm*(1-persist);
+  const capCost=(p.capratio/100)*(p.hurdle/100)*H*persist*100;
+  const phi=p.fxfee/100/rate*100;
+  const grossMargin=spread*H*persist-kNet-capCost+0.5*phi;
+  const steadyPrem=years[2].anp*p.term;
+  return {ref,rate,mkt,Mall,wccy,fc,cbar,U:Uown,share,push,pReach,persist,kNet,capCost,kbar,years,spread,grossMargin,profit:steadyPrem*grossMargin/100,phi};
+}
+
+// ===== Rendering =====
+function yen(v,unit='億円'){return (Math.round(v*10)/10).toLocaleString('ja-JP',{maximumFractionDigits:1})+' '+unit}
+function pct(v,d=1){return v.toFixed(d)+'%'}
+let charts={};
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function chartDefaults(){Chart.defaults.color=css('--muted');Chart.defaults.borderColor=css('--line');Chart.defaults.font.family=css('--mono')||'monospace';Chart.defaults.font.size=11}
+function upsert(id,cfg){if(charts[id]){charts[id].data=cfg.data;charts[id].options=cfg.options;charts[id].update('none')}else charts[id]=new Chart(document.getElementById(id),cfg)}
+
+let lastForecastRows=[];
+function render(){
+  const p=readState();const m=model(p);
+  const y3=m.years[2];
+  const tileCls=m.grossMargin>8?'good':m.grossMargin>3?'warn':'crit';
+  // 未校正ウェイト（予定利率以外）を×0.5〜×2に振ったときの3年目ANPの幅
+  const W0={...W};const band=[0.5,2].map(f=>{W={...W0,term:W0.term*f,sc:W0.sc*f,mva:W0.mva*f,phi:W0.phi*f,guarNone:W0.guarNone*f,guarTarget:W0.guarTarget*f,guarPrincipal:W0.guarPrincipal*f,target:W0.target*f,level:W0.level*f};const v=model(p).years[2].anp;W=W0;return v});
+  const bandLo=Math.min(...band,y3.anp),bandHi=Math.max(...band,y3.anp);
+  document.getElementById('tiles').innerHTML=`
+    <div class="tile"><div class="k">年換算保険料 (ANP)</div><div class="v">${yen(y3.anp)}</div><div class="d">うち循環 ${yen(y3.anpRec)}・${p.ccy}市場 ${yen(m.mkt)}（外貨建て比率 ${pct(m.fc*100,0)}）<br>未校正ウェイトを½〜2倍に振ると ${bandLo.toFixed(0)}〜${bandHi.toFixed(0)}億円</div></div>
+    <div class="tile"><div class="k">${p.ptype==='single'?'払込保険料総額':'年払保険料合計'}</div><div class="v">${yen(y3.premTotal)}</div><div class="d">${p.ptype==='single'?'ANP×'+p.term+'年':'平準払'}</div></div>
+    <div class="tile"><div class="k">新契約件数</div><div class="v">${Math.round(y3.cnt).toLocaleString('ja-JP')} <span style="font-size:.8rem">件</span></div><div class="d">平均 ${p.avgprem}万円/件</div></div>
+    <div class="tile"><div class="k">シェア（同通貨・多項ロジット）</div><div class="v">${pct(m.share*100)}</div><div class="d">U=${m.U.toFixed(2)}, 市場平均利率 ${pct(m.cbar,2)}, 到達確率 ${pct(m.pReach*100)}/年</div></div>
+    <div class="tile ${tileCls}"><div class="k">粗利益率（保険料比・期間累計）</div><div class="v">${pct(m.grossMargin)}</div><div class="d">利差 ${pct(m.spread,2)}/年, 残存 ${pct(m.persist*100,0)}, 手数料純 ${pct(m.kNet,2)}（競合平均 ${pct(m.kbar,2)}）, 資本 ${pct(m.capCost,2)}</div></div>
+    <div class="tile ${tileCls}"><div class="k">想定粗利益（定常・年）</div><div class="v">${yen(m.profit)}</div><div class="d">運用利回り ${pct(m.ref+p.spreadAdd,2)} 前提</div></div>`;
+
+  document.getElementById('kpi').innerHTML=`<span>3年目ANP <b>${y3.anp.toFixed(1)}</b> 億円</span><span>件数 <b>${Math.round(y3.cnt).toLocaleString('ja-JP')}</b></span><span>シェア <b>${pct(m.share*100)}</b></span><span>粗利益率 <b style="color:var(--${tileCls})">${pct(m.grossMargin)}</b></span><span>5年累計 <b>${m.years[4].cum.toFixed(0)}</b> 億円</span>`;
+  document.getElementById('fcnote').textContent=p.fcmode==='link'?`日米10年金利差 ${(p.us10-p.jp10).toFixed(2)}pt → 外貨建て比率 ${pct(m.fc*100)}（地銀調査2点で校正したロジット）`:`固定 ${p.fcshare}%（金融庁 定量データ集 2024上期: 主要行60.5%・地銀45.8%・大手証券91.6%、販売額加重 約58%）`;
+  document.getElementById('fcshare').disabled=p.fcmode==='link';
+  const labels=m.years.map(y=>y.fy+'年度');
+  upsert('cForecast',{type:'bar',data:{labels,datasets:[
+    {label:'新規 ANP',data:m.years.map(y=>+y.anpNew.toFixed(1)),backgroundColor:css('--s1'),stack:'a',yAxisID:'y'},
+    {label:'循環 ANP',data:m.years.map(y=>+y.anpRec.toFixed(1)),backgroundColor:css('--s5'),stack:'a',yAxisID:'y'},
+    {label:'件数',data:m.years.map(y=>Math.round(y.cnt)),type:'line',borderColor:css('--s2'),backgroundColor:css('--s2'),yAxisID:'y2',tension:.2,pointRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true},y:{stacked:true,title:{display:true,text:'億円'},beginAtZero:true},y2:{position:'right',grid:{drawOnChartArea:false},title:{display:true,text:'件'},beginAtZero:true}},plugins:{legend:{position:'bottom'}}}});
+  lastForecastRows=[['年度','立上り','新規ANP(億円)','循環ANP(億円)','ANP合計(億円)',p.ptype==='single'?'払込総額(億円)':'年払合計(億円)','件数','累計ANP(億円)','自社保有残高(億円)']].concat(m.years.map((y,i)=>[y.fy+'年度',Math.round(RAMP[i]*100)+'%',y.anpNew.toFixed(1),y.anpRec.toFixed(1),y.anp.toFixed(1),y.premTotal.toFixed(1),Math.round(y.cnt),y.cum.toFixed(1),Math.round(y.B)]));
+  document.getElementById('tForecast').innerHTML='<tr>'+lastForecastRows[0].map(h=>'<th>'+h+'</th>').join('')+'</tr>'+lastForecastRows.slice(1).map(r=>'<tr>'+r.map((c,i)=>'<td class="'+(i?'num':'')+'">'+(typeof c==='number'?c.toLocaleString('ja-JP'):c)+'</td>').join('')+'</tr>').join('');
+
+  const base=y3.anp;
+  const tests=[
+    ['予定利率 +0.25pt',{credit:p.credit+0.25}],['予定利率 −0.25pt',{credit:p.credit-0.25}],
+    ['解約控除 −1pt',{sc:p.sc-1}],['解約控除 +1pt',{sc:p.sc+1}],
+    ['為替手数料 −10銭',{fxfee:Math.max(0,p.fxfee-10)}],['為替手数料 +10銭',{fxfee:p.fxfee+10}],
+    ['販売手数料 +1pt',{comm:p.comm+1}],['販売手数料 −1pt',{comm:p.comm-1}],
+    ['据置期間 −5年',{term:Math.max(3,p.term-5)}],['据置期間 +5年',{term:p.term+5}],
+    ['目標値 −5pt',{target:p.target-5}],['目標値 +5pt',{target:p.target+5}],
+    ['MVA '+(p.mva?'なし':'あり'),{mva:p.mva?0:1}],
+    ['円元本確保に変更',{guar:'principal'}],['保証なしに変更',{guar:'none'}],
+    ['米10年 +0.5pt',{us10:p.us10+0.5}],['米10年 −0.5pt',{us10:p.us10-0.5}],
+    ['豪10年 +0.5pt',{au10:p.au10+0.5}],
+    ['円安 +5%/年',{fxtrend:p.fxtrend+5}],['日10年 +0.5pt',{jp10:p.jp10+0.5}],['日10年 −0.5pt',{jp10:p.jp10-0.5}],
+    ['規制 '+(p.reg?'解除':'継続'),{reg:p.reg?0:1}],['再購入率 +10pt',{recap:p.recap+10}]
+  ].map(([n,o])=>({n,d:(model({...p,...o}).years[2].anp-base)/base*100})).filter(t=>Math.abs(t.d)>0.05).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d)).slice(0,12);
+  upsert('cTornado',{type:'bar',data:{labels:tests.map(t=>t.n),datasets:[{data:tests.map(t=>+t.d.toFixed(1)),backgroundColor:tests.map(t=>t.d>=0?css('--s3'):css('--s2'))}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,scales:{x:{title:{display:true,text:'ANP変化率 (%)'}},y:{ticks:{font:{family:css('--body')}}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>(c.raw>0?'+':'')+c.raw+'%'}}}}});
+
+  renderScen(p,m);
+}
+
+// ===== Competitor table =====
+function renderComp(){
+  const opt=(v,arr)=>arr.map(([k,l])=>`<option value="${k}" ${String(k)===String(v)?'selected':''}>${l}</option>`).join('');
+  document.getElementById('tComp').innerHTML='<tr><th>商品名</th><th>通貨</th><th>積立利率%</th><th>基準国債%</th><th>時点</th><th>期間</th><th>解約控除%</th><th>MVA</th><th>為替手数料(銭)</th><th>保証</th><th>目標値%</th><th>払込</th><th>手数料%</th><th>販売力</th><th>出所</th><th></th></tr>'+
+    COMP.map((q,i)=>`<tr data-i="${i}">
+      <td><input type="text" data-k="name" value="${q.name.replace(/"/g,'&quot;')}"></td>
+      <td><select data-k="ccy">${opt(q.ccy,[['USD','USD'],['AUD','AUD']])}</select></td>
+      <td><input type="number" step="0.01" data-k="rate" value="${q.rate}"></td>
+      <td><input type="number" step="0.01" data-k="ref" value="${q.ref}"></td>
+      <td><input type="text" data-k="asof" value="${q.asof||''}" style="width:6em"></td>
+      <td><input type="number" step="1" data-k="term" value="${q.term}"></td>
+      <td><input type="number" step="0.5" data-k="sc" value="${q.sc}"></td>
+      <td><select data-k="mva">${opt(q.mva,[[1,'あり'],[0,'なし']])}</select></td>
+      <td><input type="number" step="1" data-k="fxfee" value="${q.fxfee}"></td>
+      <td><select data-k="guar">${opt(q.guar,[['none','なし'],['target','目標到達'],['principal','元本確保']])}</select></td>
+      <td><input type="number" step="1" data-k="target" value="${q.target}"></td>
+      <td><select data-k="ptype">${opt(q.ptype,[['single','一時払'],['level','平準']])}</select></td>
+      <td><input type="number" step="0.25" data-k="comm" value="${q.comm}"></td>
+      <td><input type="number" step="0.1" data-k="power" value="${q.power}"></td>
+      <td class="note" style="white-space:normal;max-width:14em">${q.src||''}</td>
+      <td><button class="btn small danger" data-del="${i}">削除</button></td></tr>`).join('');
+}
+document.getElementById('tComp').addEventListener('input',e=>{const tr=e.target.closest('tr');if(!tr)return;const q=COMP[+tr.dataset.i],k=e.target.dataset.k;if(!q||!k)return;q[k]=(k==='name'||k==='ccy'||k==='guar'||k==='ptype'||k==='asof')?e.target.value:+e.target.value;render()});
+document.getElementById('tComp').addEventListener('click',e=>{const b=e.target.closest('[data-del]');if(!b)return;COMP.splice(+b.dataset.del,1);renderComp();render()});
+document.getElementById('addComp').addEventListener('click',()=>{COMP.push({name:'競合'+(COMP.length+1),ccy:S.ccy,rate:S.ccy==='USD'?val('us10'):val('au10'),ref:S.ccy==='USD'?val('us10'):val('au10'),asof:'',term:10,sc:5,mva:1,fxfee:25,guar:'target',target:110,ptype:'single',comm:5,power:1});renderComp();render()});
+document.getElementById('resetComp').addEventListener('click',()=>{COMP=JSON.parse(JSON.stringify(DEFAULT_COMP));renderComp();render();toast('競合テーブルを既定値に戻しました')});
+
+// ===== Scenarios (localStorage, per-browser convenience) =====
+let SCENS=[];
+function loadScens(){try{SCENS=JSON.parse(localStorage.getItem('gaikaSimScens')||'[]')}catch(e){SCENS=[]}}
+function persistScens(){try{localStorage.setItem('gaikaSimScens',JSON.stringify(SCENS))}catch(e){}}
+function snapshot(name){const p=readState();return {name,p:JSON.parse(JSON.stringify(p))}}
+function applyScen(s){Object.assign(S,{ccy:s.p.ccy,ptype:s.p.ptype,mva:s.p.mva,guar:s.p.guar,reg:s.p.reg,fcmode:s.p.fcmode||'link'});sliders.forEach(id=>{if(s.p[id]!=null)setVal(id,s.p[id])});COMP=JSON.parse(JSON.stringify(s.p.comp||DEFAULT_COMP));syncSegs();renderComp();syncVals();render()}
+let lastScenRows=[];
+function renderScen(p,m){
+  const cols=[{name:'現在',p,m}].concat(SCENS.map(s=>({name:s.name,p:s.p,m:model(s.p)})));
+  const rows=[
+    ['通貨 / 払込',s=>s.p.ccy+' / '+(s.p.ptype==='single'?'一時払':'平準')],
+    ['予定利率',s=>pct(s.p.credit,2)],['据置期間',s=>s.p.term+'年'],['解約控除 / MVA',s=>pct(s.p.sc)+' / '+(s.p.mva?'あり':'なし')],
+    ['為替手数料',s=>s.p.fxfee+'銭'],['最低保証',s=>({none:'なし',target:'目標到達'+s.p.target+'%',principal:'円元本確保'})[s.p.guar]],['販売手数料',s=>pct(s.p.comm,2)],
+    ['米10年 / 日10年 / USDJPY',s=>s.p.us10.toFixed(2)+' / '+(+s.p.jp10).toFixed(2)+' / '+s.p.usdjpy.toFixed(1)],['規制',s=>s.p.reg?'継続':'解除'],['外貨建て比率',s=>pct(s.m.fc*100,0)+(s.p.fcmode==='link'?'(連動)':'(固定)')],
+    ['シェア',s=>pct(s.m.share*100)],['3年目ANP (億円)',s=>s.m.years[2].anp.toFixed(1)],['うち循環',s=>s.m.years[2].anpRec.toFixed(1)],['3年目件数',s=>Math.round(s.m.years[2].cnt).toLocaleString('ja-JP')],
+    ['5年累計ANP (億円)',s=>s.m.years[4].cum.toFixed(1)],['粗利益率',s=>pct(s.m.grossMargin)],['想定粗利益 (億円/年)',s=>s.m.profit.toFixed(1)]];
+  lastScenRows=[['項目'].concat(cols.map(c=>c.name))].concat(rows.map(r=>[r[0]].concat(cols.map(c=>r[1](c)))));
+  document.getElementById('tScen').innerHTML='<tr>'+lastScenRows[0].map(h=>'<th>'+h+'</th>').join('')+'</tr>'+lastScenRows.slice(1).map(r=>'<tr>'+r.map((c,i)=>'<td class="'+(i?'num':'')+'">'+c+'</td>').join('')+'</tr>').join('');
+  document.getElementById('scenList').innerHTML=SCENS.length?SCENS.map((s,i)=>`<div class="it"><b>${s.name}</b><span class="note">${s.p.ccy} ${(+s.p.credit).toFixed(2)}% / ${s.p.term}年</span><button class="btn small" data-load="${i}">読込</button><button class="btn small danger" data-rm="${i}">削除</button></div>`).join(''):'<div class="note">保存済みシナリオはありません。右上の欄に名前を入れて「シナリオ保存」。</div>';
+}
+document.getElementById('scenList').addEventListener('click',e=>{const l=e.target.closest('[data-load]'),r=e.target.closest('[data-rm]');if(l){applyScen(SCENS[+l.dataset.load]);toast('読み込みました')}if(r){SCENS.splice(+r.dataset.rm,1);persistScens();render()}});
+document.getElementById('saveScen').addEventListener('click',()=>{const nm=document.getElementById('scenName').value.trim()||('案'+(SCENS.length+1));SCENS.push(snapshot(nm));persistScens();document.getElementById('scenName').value='';render();toast('「'+nm+'」を保存')});
+function showBox(t){const b=document.getElementById('jsonBox');b.hidden=false;b.value=t;b.select()}
+function copyText(t,msg){try{navigator.clipboard.writeText(t).then(()=>toast(msg)).catch(()=>{showBox(t);toast('コピーできないため下に表示しました')})}catch(e){showBox(t);toast('コピーできないため下に表示しました')}}
+const toCSV=rows=>rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+document.getElementById('copyForecast').addEventListener('click',()=>copyText(toCSV(lastForecastRows),'予測表をコピーしました'));
+document.getElementById('copyScen').addEventListener('click',()=>copyText(toCSV(lastScenRows),'比較表をコピーしました'));
+document.getElementById('exportJson').addEventListener('click',()=>{showBox(JSON.stringify(SCENS.map(s=>({name:s.name,p:s.p}))));toast('JSONを表示しました（全選択してコピー）')});
+document.getElementById('importJson').addEventListener('click',()=>{const b=document.getElementById('jsonBox');if(b.hidden){b.hidden=false;b.value='';b.focus();toast('JSONを貼り付けてもう一度押してください');return}try{const arr=JSON.parse(b.value);if(!Array.isArray(arr))throw new Error('配列ではありません');let n=0;arr.forEach(s=>{if(s&&s.p&&s.name){SCENS.push({name:s.name,p:s.p});n++}});persistScens();render();toast(n+'件を読み込みました')}catch(err){toast('読み込み失敗: '+err.message)}});
+
+// ===== Monte Carlo (correlated) =====
+function randn(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}
+function cholesky(A){const n=A.length,L=Array.from({length:n},()=>new Array(n).fill(0));for(let i=0;i<n;i++)for(let j=0;j<=i;j++){let s=A[i][j];for(let k=0;k<j;k++)s-=L[i][k]*L[j][k];L[i][j]=i===j?Math.sqrt(Math.max(s,1e-9)):s/L[j][j]}return L}
+function runMC(){
+  const p=readState();const N=1000;const paths=[];const L=cholesky(DYN.corr);const [sU,sA,sJ,sF]=DYN.sig,[mU,mA,mJ]=DYN.mean;
+  for(let k=0;k<N;k++){
+    let r=p.us10,ra=p.au10,rj=p.jp10,fx=p.usdjpy;const ys=[];
+    for(let t=0;t<5;t++){
+      const z=[randn(),randn(),randn(),randn()];const e=L.map(row=>row.reduce((s,v,i)=>s+v*z[i],0));
+      r=Math.max(0.3,r+0.15*(mU-r)+sU*e[0]);ra=Math.max(0.3,ra+0.15*(mA-ra)+sA*e[1]);rj=Math.max(-0.3,rj+0.15*(mJ-rj)+sJ*e[2]);
+      const fxNew=fx*Math.exp((p.fxtrend/100)+sF*e[3]);const tr=(fxNew/fx-1)*100;fx=fxNew;
+      const mm=model({...p,us10:r,au10:ra,jp10:rj,usdjpy:fx,fxtrend:tr});
+      ys.push(mm.years[t].anp);
+    }
+    paths.push(ys);
+  }
+  const q=(arr,qq)=>{const s=[...arr].sort((a,b)=>a-b);return s[Math.floor(qq*(s.length-1))]};
+  const stats=[0,1,2,3,4].map(t=>{const a=paths.map(pth=>pth[t]);return {p10:q(a,.1),p50:q(a,.5),p90:q(a,.9)}});
+  const det=model(p).years.map(y=>y.anp);
+  const labels=[0,1,2,3,4].map(i=>(p.launch+i)+'年度');
+  upsert('cMC',{type:'line',data:{labels,datasets:[
+    {label:'P90',data:stats.map(s=>+s.p90.toFixed(1)),borderColor:'transparent',backgroundColor:css('--band'),fill:'+1',pointRadius:0},
+    {label:'P10',data:stats.map(s=>+s.p10.toFixed(1)),borderColor:'transparent',backgroundColor:css('--band'),fill:false,pointRadius:0},
+    {label:'中央値',data:stats.map(s=>+s.p50.toFixed(1)),borderColor:css('--s1'),backgroundColor:css('--s1'),tension:.2},
+    {label:'決定論（現在の前提）',data:det.map(v=>+v.toFixed(1)),borderColor:css('--s2'),borderDash:[5,4],backgroundColor:css('--s2'),tension:.2}]},
+    options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,title:{display:true,text:'ANP 億円'}}},plugins:{legend:{position:'bottom',labels:{filter:i=>i.text!=='P10'&&i.text!=='P90'}}}}});
+  const s3=stats[2];
+  document.getElementById('mcNote').textContent=`3年目ANP: 中央値 ${s3.p50.toFixed(1)}億円、P10 ${s3.p10.toFixed(1)} 〜 P90 ${s3.p90.toFixed(1)}億円（${N}経路）。相関・ボラ・長期平均は2015年以降の月次データから推定: σ 米${sU.toFixed(2)} 豪${sA.toFixed(2)} 日${sJ.toFixed(2)}pt・為替${(sF*100).toFixed(1)}%、相関 米-為替 ${DYN.corr[0][3].toFixed(2)}, 米-豪 ${DYN.corr[0][1].toFixed(2)}, 米-日 ${DYN.corr[0][2].toFixed(2)}。`;
+}
+
+// ===== History panel =====
+function renderHist(){
+  const labels=HIST.us10.map((_,i)=>monthLabel(i));
+  upsert('cHist',{type:'line',data:{labels,datasets:[
+    {label:'米10年',data:HIST.us10,borderColor:css('--s1'),pointRadius:0,borderWidth:1.5,yAxisID:'y'},
+    {label:'豪10年',data:HIST.au10,borderColor:css('--s2'),pointRadius:0,borderWidth:1.5,yAxisID:'y'},
+    {label:'日10年',data:HIST.jp10,borderColor:css('--s3'),pointRadius:0,borderWidth:1.5,yAxisID:'y'},
+    {label:'USD/JPY',data:HIST.usdjpy,borderColor:css('--s4'),pointRadius:0,borderWidth:1.5,yAxisID:'y2'}]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},scales:{x:{ticks:{maxTicksLimit:8}},y:{title:{display:true,text:'%'}},y2:{position:'right',grid:{drawOnChartArea:false},title:{display:true,text:'円'}}},plugins:{legend:{display:false}}}});
+  upsert('cFit',{type:'bar',data:{labels:REG.fit.map(f=>f.fy+'年度'),datasets:[
+    {label:'実績 個人年金 新契約ANP',data:REG.fit.map(f=>Math.round(f.act)),backgroundColor:css('--s1')},
+    {label:'回帰値',data:REG.fit.map(f=>Math.round(f.fit)),type:'line',borderColor:css('--s2'),backgroundColor:css('--s2'),pointRadius:4,tension:.2}]},
+    options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,title:{display:true,text:'億円'}}},plugins:{legend:{position:'bottom'}}}});
+  const [a,b,c,d16,dreg]=REG.coef;
+  document.getElementById('tHist').innerHTML='<tr><th>年度</th><th>新契約ANP (億円)</th><th>件数 (万件)</th><th>米10年 年度平均</th><th>USD/JPY 年度平均</th><th>前年度比</th><th>備考</th></tr>'+
+    IND.map(d=>{const fx=fyAvg(HIST.usdjpy,d.fy),fx0=fyAvg(HIST.usdjpy,d.fy-1);return `<tr><td>${d.fy}年度</td><td class="num">${d.anp.toLocaleString('ja-JP')}</td><td class="num">${d.cnt}</td><td class="num">${fyAvg(HIST.us10,d.fy).toFixed(2)}</td><td class="num">${fx.toFixed(1)}</td><td class="num">${((fx/fx0-1)*100).toFixed(1)}%</td><td>${d.note||''}</td></tr>`}).join('')+
+    `<tr><td colspan="7" class="note" style="text-align:left;white-space:normal">回帰 ln(ANP) = ${a.toFixed(2)} + ${b.toFixed(3)}·米10年 + ${c.toFixed(2)}·ΔlnFX + ${d16.toFixed(2)}·D2016 + ${dreg.toFixed(2)}·D規制 （R²=${REG.r2.toFixed(2)}、${REG.n}観測）。米10年+1ptで市場 ×${Math.exp(b).toFixed(2)}、円安+10%で ×${Math.exp(c*0.1).toFixed(2)}、規制で ×${Math.exp(dreg).toFixed(2)}。<br>年次変化の推定（${DYN.n}観測）: σ 米${DYN.sig[0].toFixed(2)} 豪${DYN.sig[1].toFixed(2)} 日${DYN.sig[2].toFixed(2)}pt, 為替${(DYN.sig[3]*100).toFixed(1)}%／相関 米-豪 ${DYN.corr[0][1].toFixed(2)}, 米-日 ${DYN.corr[0][2].toFixed(2)}, 豪-日 ${DYN.corr[1][2].toFixed(2)}, 米-為替 ${DYN.corr[0][3].toFixed(2)}, 豪-為替 ${DYN.corr[1][3].toFixed(2)}, 日-為替 ${DYN.corr[2][3].toFixed(2)}／直近5年平均 米${DYN.mean[0].toFixed(2)} 豪${DYN.mean[1].toFixed(2)} 日${DYN.mean[2].toFixed(2)}。</td></tr>`;
+}
+
+// ===== CSV import =====
+document.getElementById('csvIn').addEventListener('change',e=>{
+  const f=e.target.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{try{
+    const rows=String(rd.result).split(/\r?\n/).map(r=>r.trim()).filter(Boolean).map(r=>r.split(/[,\t]/)).filter(r=>/^\d{4}-\d{2}/.test(r[0]));
+    if(rows.length<12)throw new Error('行が少なすぎます');
+    const [y,m]=rows[0][0].split('-').map(Number);HIST.start=[y,m];
+    HIST.us10=rows.map(r=>+r[1]);HIST.au10=rows.map(r=>+r[2]);HIST.jp10=rows.map(r=>+r[3]);HIST.usdjpy=rows.map(r=>+r[4]);HIST.usdaud=rows.map(r=>+(r[5]||0.68));
+    fitMarket();fitDynamics();resetEnv();renderHist();render();toast(rows.length+'か月分を読み込みました');
+  }catch(err){toast('読み込み失敗: '+err.message)}};
+  rd.readAsText(f);e.target.value='';
+});
+function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2200)}
+
+// ===== Conjoint estimator (design must match conjoint-survey.html) =====
+const LV={credit:[-0.5,-0.25,0,0.25,0.5],sc:[0,4,7],fx:[0,25,50],guar:['none','target','principal'],term:[5,10,20],mva:[1,0]};
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function cjDesign(seed,nTasks=12){const r=mulberry32(seed);const pick=a=>a[Math.floor(r()*a.length)];const tasks=[];while(tasks.length<nTasks){const alts=[];for(let k=0;k<3;k++)alts.push({credit:pick(LV.credit),sc:pick(LV.sc),fx:pick(LV.fx),guar:pick(LV.guar),term:pick(LV.term),mva:pick(LV.mva)});const key=alts.map(a=>JSON.stringify(a));if(new Set(key).size===3)tasks.push(alts)}return tasks}
+const XNAMES=['予定利率差 (pt)','解約控除 (pt)','為替手数料 (25銭あたり)','目標到達型（なし比）','円元本確保（なし比）','据置期間 (5年あたり)','MVAあり','「どれも提案しない」定数'];
+function xvec(a){return [a.credit,a.sc,a.fx/25,a.guar==='target'?1:0,a.guar==='principal'?1:0,(a.term-10)/5,a.mva,0]}
+const XNONE=[0,0,0,0,0,0,0,1];
+function parseCodes(txt){const out=[];txt.split(/\r?\n/).forEach(l=>{const m=l.trim().match(/^CJ1-(\d+)-([1-4]{12})-(\d)(\d)$/);if(m)out.push({seed:+m[1],choices:m[2].split('').map(Number),role:+m[3],exp:+m[4]})});return out}
+function clogit(resps){
+  const sets=[];resps.forEach(r=>{const d=cjDesign(r.seed);d.forEach((alts,t)=>{sets.push({X:alts.map(xvec).concat([XNONE]),y:r.choices[t]-1})})});
+  const k=8;let b=new Array(k).fill(0);let ll=0;
+  for(let it=0;it<50;it++){const g=new Array(k).fill(0),H=Array.from({length:k},()=>new Array(k).fill(0));ll=0;
+    sets.forEach(st=>{const u=st.X.map(x=>x.reduce((s,v,i)=>s+v*b[i],0));const mx=Math.max(...u);const e=u.map(v=>Math.exp(v-mx));const Z=e.reduce((a,c)=>a+c);const pr=e.map(v=>v/Z);ll+=Math.log(pr[st.y]);
+      const xb=new Array(k).fill(0);st.X.forEach((x,j)=>x.forEach((v,i)=>xb[i]+=pr[j]*v));
+      st.X[st.y].forEach((v,i)=>g[i]+=v-xb[i]);
+      st.X.forEach((x,j)=>{for(let a=0;a<k;a++)for(let c=0;c<k;c++)H[a][c]-=pr[j]*(x[a]-xb[a])*(x[c]-xb[c])})});
+    const Hr=H.map((row,i)=>row.map((v,j)=>v-(i===j?1e-6:0)));
+    const step=solve(Hr.map(r=>r.map(v=>-v)),g);const nb=b.map((v,i)=>v+step[i]);const chg=Math.max(...step.map(Math.abs));b=nb;if(chg<1e-6)break;}
+  // SE from inverse Hessian
+  const H=Array.from({length:k},()=>new Array(k).fill(0));sets.forEach(st=>{const u=st.X.map(x=>x.reduce((s,v,i)=>s+v*b[i],0));const mx=Math.max(...u);const e=u.map(v=>Math.exp(v-mx));const Z=e.reduce((a,c)=>a+c);const pr=e.map(v=>v/Z);const xb=new Array(k).fill(0);st.X.forEach((x,j)=>x.forEach((v,i)=>xb[i]+=pr[j]*v));st.X.forEach((x,j)=>{for(let a=0;a<k;a++)for(let c=0;c<k;c++)H[a][c]+=pr[j]*(x[a]-xb[a])*(x[c]-xb[c])})});
+  const se=[];for(let i=0;i<k;i++){const ei=new Array(k).fill(0);ei[i]=1;const col=solve(H.map(r=>[...r]),ei);se.push(Math.sqrt(Math.max(col[i],0)))}
+  const ll0=sets.length*Math.log(1/4);
+  return {b,se,ll,rho2:1-ll/ll0,n:resps.length,nsets:sets.length};
+}
+let EST=null;
+function renderW(){document.getElementById('tW').innerHTML='<tr><th>項目</th><th>予定利率差</th><th>据置(年)</th><th>解約控除(pt)</th><th>MVA</th><th>為替手数料(%)</th><th>保証なし</th><th>目標到達</th><th>元本確保</th><th>目標値(pt)</th><th>平準払</th><th>出所</th></tr>'+
+  `<tr><td>現在のウェイト</td>${['credit','term','sc','mva','phi','guarNone','guarTarget','guarPrincipal','target','level'].map(k=>'<td class="num">'+W[k].toFixed(3)+'</td>').join('')}<td class="note" style="white-space:normal">${W.src}</td></tr>`}
+function estimate(){const resps=parseCodes(document.getElementById('codes').value);if(resps.length<3){toast('有効な回答コードが3件未満です');return}
+  EST=clogit(resps);const scale=document.getElementById('scaleW').checked?2.0/EST.b[0]:1;
+  document.getElementById('estNote').textContent=`回答者 ${EST.n}人・選択 ${EST.nsets}件、対数尤度 ${EST.ll.toFixed(1)}、McFadden ρ² ${EST.rho2.toFixed(3)}${scale!==1?`、スケール係数 ${scale.toFixed(2)}（予定利率係数 ${EST.b[0].toFixed(2)}→2.0）`:''}`;
+  document.getElementById('tEst').innerHTML='<tr><th>変数</th><th>係数</th><th>標準誤差</th><th>t値</th><th>適用後（スケール済）</th></tr>'+EST.b.map((v,i)=>`<tr><td>${XNAMES[i]}</td><td class="num">${v.toFixed(3)}</td><td class="num">${EST.se[i].toFixed(3)}</td><td class="num">${(v/(EST.se[i]||1e-9)).toFixed(1)}</td><td class="num">${(v*scale).toFixed(3)}</td></tr>`).join('');
+  toast('推定しました')}
+function applyW(){if(!EST){toast('先に推定してください');return}const sc=document.getElementById('scaleW').checked?2.0/EST.b[0]:1;const b=EST.b.map(v=>v*sc);const rate=val('usdjpy');
+  W={credit:b[0],sc:b[1],phi:b[2]/25*rate,guarTarget:b[3],guarPrincipal:b[4],guarNone:0,term:b[5]/5,mva:b[6],target:W_DEFAULT.target,level:W_DEFAULT.level,src:`コンジョイント推定（${EST.n}人、ρ²=${EST.rho2.toFixed(2)}）。目標値・平準払は調査対象外のため既定値`};
+  renderW();render();toast('ウェイトを適用しました')}
+function demoCodes(){const lines=[];for(let r=0;r<30;r++){const seed=100000+Math.floor(Math.random()*1e9);const d=cjDesign(seed);const rate=val('usdjpy');const ch=d.map(alts=>{const u=alts.map(a=>{const phi=a.fx/rate,phiBar=50/rate;return W_DEFAULT.credit*a.credit+W_DEFAULT.sc*(a.sc-5)+(a.mva?W_DEFAULT.mva:0)+W_DEFAULT.phi*(phi-phiBar)+{none:W_DEFAULT.guarNone,target:0,principal:W_DEFAULT.guarPrincipal}[a.guar]+W_DEFAULT.term*(a.term-10)}).concat([-1.0]);const g=u.map(v=>v-Math.log(-Math.log(Math.random())));return g.indexOf(Math.max(...g))+1});lines.push(`CJ1-${seed}-${ch.join('')}-${1+Math.floor(Math.random()*3)}${1+Math.floor(Math.random()*4)}`)}
+  document.getElementById('codes').value=lines.join('\n');toast('既定ウェイト＋ノイズから30人分を生成（本番では実回答に置き換え）')}
+document.getElementById('estimate').addEventListener('click',estimate);
+document.getElementById('applyW').addEventListener('click',applyW);
+document.getElementById('resetW').addEventListener('click',()=>{W={...W_DEFAULT};renderW();render();toast('既定ウェイトに戻しました')});
+document.getElementById('demoW').addEventListener('click',demoCodes);
+
+// ===== Tabs (インプット / アウトプット / 仕様書 → 見出し) =====
+const TOPS=[['in','インプット'],['out','アウトプット'],['spec','仕様書']];
+function splitSpec(){ // 仕様書パネルを h3 ごとの独立パネルに分割
+  const spec=document.getElementById('spec');const nodes=[...spec.childNodes];const parent=spec.parentNode;
+  let cur=null,idx=0;const intro=document.createElement('div');intro.className='panel spec';intro.dataset.top='spec';intro.dataset.sub='spec-intro';intro.dataset.title='概要';
+  const panels=[intro];
+  nodes.forEach(n=>{if(n.nodeType===1&&n.tagName==='H3'){idx++;cur=document.createElement('div');cur.className='panel spec';cur.dataset.top='spec';cur.dataset.sub='spec-'+idx;cur.dataset.title=n.textContent.replace(/^\d+\.\s*/,'').replace(/\s*(回帰|校正|仮定|実データ)\s*$/,'').trim();panels.push(cur)}(cur||intro).appendChild(n)});
+  panels.forEach(pn=>parent.insertBefore(pn,spec));spec.remove();
+  intro.querySelector('h2').textContent='仕様書 — 目次';
+  const ul=document.createElement('ul');ul.style.cssText='font-size:.84rem;padding-left:18px';
+  panels.slice(1).forEach(pn=>{const li=document.createElement('li');const b=document.createElement('a');b.href='#'+pn.dataset.sub;b.textContent=pn.dataset.title;b.style.color='var(--accent)';li.appendChild(b);ul.appendChild(li)});
+  intro.appendChild(ul);
+}
+const TAB={top:'in',sub:'env'};
+function allPanels(){return [...document.querySelectorAll('.panes>.panel')]}
+function showTab(top,sub,push=true){
+  const panels=allPanels();const inTop=panels.filter(pn=>pn.dataset.top===top);
+  if(!inTop.some(pn=>pn.dataset.sub===sub))sub=inTop[0].dataset.sub;
+  TAB.top=top;TAB.sub=sub;
+  panels.forEach(pn=>pn.classList.toggle('active',pn.dataset.sub===sub));
+  document.getElementById('topnav').innerHTML=TOPS.map(([k,l])=>`<button role="tab" aria-selected="${k===top}" data-top="${k}">${l}</button>`).join('');
+  document.getElementById('subnav').innerHTML=inTop.map(pn=>`<button role="tab" aria-selected="${pn.dataset.sub===sub}" data-sub="${pn.dataset.sub}">${pn.dataset.title}</button>`).join('');
+  const i=inTop.findIndex(pn=>pn.dataset.sub===sub);const prev=inTop[i-1],next=inTop[i+1];
+  const nav=document.getElementById('panenav');nav.className='pane-nav'+(top==='in'?' input-width':'');
+  nav.innerHTML=(prev?`<button class="btn" data-sub="${prev.dataset.sub}">← ${prev.dataset.title}</button>`:'<span></span>')+(next?`<button class="btn" data-sub="${next.dataset.sub}">${next.dataset.title} →</button>`:(top==='in'?`<button class="btn primary" data-goto="out">アウトプットを見る →</button>`:'<span></span>'));
+  if(push&&location.hash!=='#'+sub){try{history.replaceState(null,'','#'+sub)}catch(e){}}
+  Object.values(charts).forEach(c=>{if(c.canvas.closest('.panel.active'))c.resize()});
+  window.scrollTo({top:0});
+}
+document.getElementById('topnav').addEventListener('click',e=>{const b=e.target.closest('[data-top]');if(b)showTab(b.dataset.top,TAB.lastSub?.[b.dataset.top])});
+document.getElementById('subnav').addEventListener('click',e=>{const b=e.target.closest('[data-sub]');if(b){showTab(TAB.top,b.dataset.sub)}});
+document.getElementById('panenav').addEventListener('click',e=>{const b=e.target.closest('[data-sub],[data-goto]');if(!b)return;if(b.dataset.goto)showTab(b.dataset.goto,'summary');else showTab(TAB.top,b.dataset.sub)});
+function gotoHash(){const h=(location.hash||'').replace('#','');const pn=allPanels().find(x=>x.dataset.sub===h);if(pn)showTab(pn.dataset.top,pn.dataset.sub,false);else showTab('in','env',false)}
+window.addEventListener('hashchange',gotoHash);
+const _showTab=showTab;showTab=function(t,s,p){_showTab(t,s,p);TAB.lastSub=TAB.lastSub||{};TAB.lastSub[t]=s};
+
+// ===== Wiring =====
+const SEGS={ccy:'ccy',ptype:'ptype',mva:'mva',guar:'guar',reg:'reg',fcmode:'fcmode'};
+function wireSeg(id,key,after){document.getElementById(id).querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{S[key]=(key==='mva'||key==='reg')?+b.dataset.v:b.dataset.v;syncSegs();if(after)after();syncVals();render()}))}
+function syncSegs(){Object.entries(SEGS).forEach(([id,key])=>document.getElementById(id).querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v)===String(S[key])?'true':'false')))}
+function syncVals(){sliders.forEach(id=>{document.getElementById(id+'v').textContent=fmt[id](val(id))})}
+sliders.forEach(id=>document.getElementById(id).addEventListener('input',()=>{syncVals();render()}));
+wireSeg('ccy','ccy',defaultCredit);wireSeg('ptype','ptype');wireSeg('mva','mva');wireSeg('guar','guar');wireSeg('reg','reg');wireSeg('fcmode','fcmode');
+document.getElementById('resetEnv').addEventListener('click',()=>{resetEnv();syncVals();render();toast('最新実績（2026年9月）に戻しました')});
+document.getElementById('runMC').addEventListener('click',()=>{runMC();showTab('out','mc')});
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{chartDefaults();Object.values(charts).forEach(c=>c.destroy());charts={};renderHist();render()});
+
+chartDefaults();fitMarket();fitDynamics();loadScens();loadCatalog();resetEnv();defaultCredit();syncSegs();syncVals();renderComp();renderW();splitSpec();renderHist();render();gotoHash();
+</script>
+</body>
+</html>

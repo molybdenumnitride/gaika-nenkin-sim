@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="icon" href="data:,">
+<style>html{color-scheme:light dark}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>外貨建て年金 商品選好調査</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one choice task per screen, three product cards side by side, progress bar. Treatment: same actuarial-worksheet family as the simulator. */
+:root{--bg:#f6f7f4;--panel:#fff;--fg:#1d2430;--muted:#5e6878;--line:#d9ddd6;--accent:#1f4e8c;--accent-soft:#e3ebf6;--good:#2d7a4f;--body:"Noto Sans JP",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141922;--panel:#1c2330;--fg:#e8ebef;--muted:#9aa5b5;--line:#2f3947;--accent:#7fa8e0;--accent-soft:#223652;--good:#6fc28f;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#141922;--panel:#1c2330;--fg:#e8ebef;--muted:#9aa5b5;--line:#2f3947;--accent:#7fa8e0;--accent-soft:#223652;--good:#6fc28f;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.6;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+main{max-width:900px;margin:0 auto}
+h1{font-size:1.3rem;margin:0 0 6px;text-wrap:balance}
+h2{font-size:1rem;margin:0 0 10px}
+p{max-width:65ch}
+.panel{background:var(--panel);border:1px solid var(--line);padding:16px 18px;margin-bottom:14px}
+.note{font-size:.82rem;color:var(--muted)}
+.prog{height:6px;background:var(--line);margin:10px 0 16px}
+.prog i{display:block;height:100%;background:var(--accent);width:0}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:640px){.cards{grid-template-columns:1fr}}
+.card{border:2px solid var(--line);background:var(--bg);padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:4px}
+.card:hover{border-color:var(--accent)}
+.card[aria-pressed=true]{border-color:var(--accent);background:var(--accent-soft)}
+.card h3{font-size:.85rem;margin:0 0 4px;color:var(--muted);font-weight:500}
+.card .row{display:flex;justify-content:space-between;gap:8px;font-size:.85rem;border-bottom:1px dashed var(--line);padding:2px 0}
+.card .row b{font-family:var(--mono);font-weight:500;font-variant-numeric:tabular-nums}
+.none{margin-top:10px;width:100%;font:inherit;padding:10px;border:2px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer}
+.none[aria-pressed=true]{border-color:var(--accent);background:var(--accent-soft)}
+.btn{font:inherit;padding:8px 16px;border:1px solid var(--accent);background:var(--panel);color:var(--accent);cursor:pointer}
+.btn.primary{background:var(--accent);color:#fff}
+.btn:disabled{opacity:.4;cursor:default}
+.actions{display:flex;justify-content:space-between;gap:8px;margin-top:14px}
+label.f{display:block;font-size:.85rem;margin:8px 0}
+select,input[type=text]{font:inherit;padding:6px 8px;border:1px solid var(--line);background:var(--bg);color:var(--fg);width:100%;max-width:360px}
+textarea{width:100%;font-family:var(--mono);font-size:.85rem;padding:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg);min-height:70px}
+.code{font-family:var(--mono);font-size:.95rem;word-break:break-all;padding:10px;border:1px solid var(--line);background:var(--bg)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+<main>
+  <h1>外貨建て一時払保険 商品選好調査</h1>
+  <p class="note">商品仕様の違いが「どれを顧客に提案したくなるか」にどう効くかを測る調査です。12問、約5分。正解はありません。普段の窓口での感覚でお答えください。</p>
+
+  <section class="panel" id="intro">
+    <h2>はじめに</h2>
+    <label class="f">主な販売チャネル
+      <select id="role"><option value="1">銀行窓販</option><option value="2">証券</option><option value="3">来店型・乗合代理店</option><option value="4">保険会社の営業職員</option><option value="5">その他（商品企画・本部など）</option></select></label>
+    <label class="f">外貨建て保険の販売経験
+      <select id="exp"><option value="1">1年未満</option><option value="2">1〜3年</option><option value="3">3〜10年</option><option value="4">10年以上</option></select></label>
+    <p class="note">各問では、同じ通貨（米ドル）・同じ一時払保険料（800万円相当）・同じ保険会社の信用力という前提で、仕様だけが異なる3商品を示します。<b>いま目の前の典型的なお客様に提案するなら</b>どれを選びますか。「どれも提案しない」も選べます。</p>
+    <div class="actions"><span></span><button class="btn primary" id="start">回答を始める</button></div>
+  </section>
+
+  <section class="panel" id="task" hidden>
+    <div class="note" id="counter"></div>
+    <div class="prog"><i id="bar"></i></div>
+    <h2>どれを提案しますか？</h2>
+    <div class="cards" id="cards"></div>
+    <button class="none" id="noneBtn" aria-pressed="false">どれも提案しない（円建てや他の商品を勧める）</button>
+    <div class="actions"><button class="btn" id="back">← 戻る</button><button class="btn primary" id="next" disabled>次へ →</button></div>
+  </section>
+
+  <section class="panel" id="done" hidden>
+    <h2>ご回答ありがとうございました</h2>
+    <p id="saved" class="note"></p>
+    <p>下の<b>回答コード</b>をコピーして、調査担当者にメール等でお送りください（回答コードだけで集計できます。氏名は含まれません）。</p>
+    <div class="code" id="code"></div>
+    <div class="actions"><button class="btn primary" id="copy">回答コードをコピー</button><span></span></div>
+    <textarea id="fallback" hidden></textarea>
+  </section>
+</main>
+<script>
+// ===== Design (shared with the simulator's estimator — keep identical) =====
+const LV={credit:[-0.5,-0.25,0,0.25,0.5],sc:[0,4,7],fx:[0,25,50],guar:['none','target','principal'],term:[5,10,20],mva:[1,0]};
+const LABEL={credit:v=>'市場平均'+(v===0?'と同じ':(v>0?'+':'')+v.toFixed(2)+'pt'),sc:v=>v===0?'なし':'初年度'+v+'%（10年で逓減）',fx:v=>v===0?'無料':v+'銭/ドル',guar:v=>({none:'なし',target:'目標到達型（110%で円確保）',principal:'円建て元本確保特約'})[v],term:v=>v+'年',mva:v=>v?'あり':'なし'};
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function design(seed,nTasks=12){const r=mulberry32(seed);const pick=a=>a[Math.floor(r()*a.length)];const tasks=[];while(tasks.length<nTasks){const alts=[];for(let k=0;k<3;k++)alts.push({credit:pick(LV.credit),sc:pick(LV.sc),fx:pick(LV.fx),guar:pick(LV.guar),term:pick(LV.term),mva:pick(LV.mva)});const key=alts.map(a=>JSON.stringify(a));if(new Set(key).size===3)tasks.push(alts)}return tasks}
+
+// ===== Flow =====
+let seed=0,tasks=[],i=0,choices=[];
+const $=id=>document.getElementById(id);
+$('start').addEventListener('click',()=>{seed=Math.floor(Math.random()*2147483647)||1;tasks=design(seed);i=0;choices=new Array(tasks.length).fill(0);$('intro').hidden=true;$('task').hidden=false;show()});
+function show(){
+  $('counter').textContent=`問 ${i+1} / ${tasks.length}`;$('bar').style.width=(i/tasks.length*100)+'%';
+  $('cards').innerHTML=tasks[i].map((a,k)=>`<div class="card" role="button" tabindex="0" aria-pressed="${choices[i]===k+1}" data-k="${k+1}"><h3>商品 ${'ABC'[k]}</h3>
+    <div class="row"><span>予定利率</span><b>${LABEL.credit(a.credit)}</b></div>
+    <div class="row"><span>解約控除</span><b>${LABEL.sc(a.sc)}</b></div>
+    <div class="row"><span>市場価格調整</span><b>${LABEL.mva(a.mva)}</b></div>
+    <div class="row"><span>為替手数料</span><b>${LABEL.fx(a.fx)}</b></div>
+    <div class="row"><span>円建て保証</span><b>${LABEL.guar(a.guar)}</b></div>
+    <div class="row"><span>据置期間</span><b>${LABEL.term(a.term)}</b></div></div>`).join('');
+  $('noneBtn').setAttribute('aria-pressed',String(choices[i]===4));
+  $('next').disabled=!choices[i];$('next').textContent=i===tasks.length-1?'回答を送る':'次へ →';$('back').disabled=i===0;
+}
+function select(k){choices[i]=k;show()}
+$('cards').addEventListener('click',e=>{const c=e.target.closest('.card');if(c)select(+c.dataset.k)});
+$('cards').addEventListener('keydown',e=>{const c=e.target.closest('.card');if(c&&(e.key==='Enter'||e.key===' ')){e.preventDefault();select(+c.dataset.k)}});
+$('noneBtn').addEventListener('click',()=>select(4));
+$('back').addEventListener('click',()=>{if(i>0){i--;show()}});
+$('next').addEventListener('click',async()=>{if(!choices[i])return;if(i<tasks.length-1){i++;show();return}
+  const code=`CJ1-${seed}-${choices.join('')}-${$('role').value}${$('exp').value}`;
+  $('task').hidden=true;$('done').hidden=false;$('code').textContent=code;
+  try{const cl=typeof claude!=='undefined'?claude:null;const db=cl?await cl.use('db'):null,user=cl?await cl.use('user'):null;if(db&&user){const id=await user.id();await db.collection('responses/'+id+'/items').doc(String(seed)).set({code,seed,choices,role:+$('role').value,exp:+$('exp').value,at:new Date().toISOString()});$('saved').textContent='回答は自動で記録されました。念のため回答コードもお控えください。'}else{$('saved').textContent='この環境では自動記録ができないため、回答コードの送付をお願いします。'}}catch(e){$('saved').textContent='自動記録に失敗しました。回答コードの送付をお願いします。'}
+});
+$('copy').addEventListener('click',()=>{const t=$('code').textContent;const fb=()=>{const ta=$('fallback');ta.hidden=false;ta.value=t;ta.select()};try{navigator.clipboard.writeText(t).then(()=>{$('copy').textContent='コピーしました'}).catch(fb)}catch(e){fb()}});
+</script>
+</body>
+</html>

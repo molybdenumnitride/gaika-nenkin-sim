@@ -79,6 +79,8 @@ td.num{font-family:var(--mono)}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .btn{font:inherit;font-size:.8rem;padding:6px 12px;border:1px solid var(--accent);background:var(--panel);color:var(--accent);cursor:pointer}
 .btn.primary{background:var(--accent);color:#fff}
+a.btn{display:inline-block;text-decoration:none}
+.help-link{font-size:.74rem;font-weight:400;color:var(--accent);margin-left:10px;white-space:nowrap;text-underline-offset:3px}
 .btn.small{padding:2px 8px;font-size:.72rem}
 .btn.danger{border-color:var(--crit);color:var(--crit)}
 .note{font-size:.78rem;color:var(--muted)}
@@ -134,6 +136,7 @@ textarea{width:100%;font:inherit;font-family:var(--mono);font-size:.74rem;paddin
     <input type="text" id="scenName" class="namebox" placeholder="シナリオ名">
     <button class="btn" id="saveScen">シナリオ保存</button>
     <button class="btn" id="openOptimizer">商品スペック提案</button>
+    <a class="btn" href="guide.html" target="_blank" rel="noopener">使い方</a>
     <button class="btn primary" id="runMC">モンテカルロ実行</button>
   </div>
 </header>
@@ -142,7 +145,7 @@ textarea{width:100%;font:inherit;font-family:var(--mono);font-size:.74rem;paddin
 
 <div class="panes">
     <div class="panel input" data-top="in" data-sub="env" data-title="外部環境">
-      <h2>外部環境 <span class="pill data">FRED 2026-09</span></h2>
+      <h2>外部環境 <span class="pill data">FRED 2026-09</span> <a class="help-link" href="guide.html#environment" target="_blank" rel="noopener">設定の考え方 ↗</a></h2>
       <div class="group">
         <div class="field"><label for="us10">米国債10年 (%)</label><span class="val" id="us10v"></span><input type="range" id="us10" min="0.5" max="7" step="0.05"></div>
         <div class="field"><label for="au10">豪国債10年 (%)</label><span class="val" id="au10v"></span><input type="range" id="au10" min="0.5" max="7" step="0.05"></div>
@@ -160,7 +163,7 @@ textarea{width:100%;font:inherit;font-family:var(--mono);font-size:.74rem;paddin
     </div>
 
     <div class="panel input" data-top="in" data-sub="product" data-title="商品仕様">
-      <h2>商品仕様</h2>
+      <h2>商品仕様 <a class="help-link" href="guide.html#product" target="_blank" rel="noopener">設定の考え方 ↗</a></h2>
       <div class="group">
         <div class="field"><label>通貨</label><span></span>
           <div class="seg" id="ccy"><button aria-pressed="true" data-v="USD">米ドル</button><button aria-pressed="false" data-v="AUD">豪ドル</button></div></div>
@@ -181,7 +184,7 @@ textarea{width:100%;font:inherit;font-family:var(--mono);font-size:.74rem;paddin
     </div>
 
     <div class="panel input" data-top="in" data-sub="channel" data-title="販売体制・保有">
-      <h2>販売体制・保有</h2>
+      <h2>販売体制・保有 <a class="help-link" href="guide.html#channel" target="_blank" rel="noopener">設定の考え方 ↗</a></h2>
       <div class="group">
         <div class="field"><label for="bank">銀行窓販 比率 (%)</label><span class="val" id="bankv"></span><input type="range" id="bank" min="0" max="100" step="5" value="60"></div>
         <div class="field"><label for="sec">証券 比率 (%)</label><span class="val" id="secv"></span><input type="range" id="sec" min="0" max="100" step="5" value="20"></div>
@@ -199,7 +202,7 @@ textarea{width:100%;font:inherit;font-family:var(--mono);font-size:.74rem;paddin
       </div>
     </div>
     <div class="panel input" data-top="in" data-sub="profit" data-title="収益前提">
-      <h2>収益前提</h2>
+      <h2>収益前提 <a class="help-link" href="guide.html#profit" target="_blank" rel="noopener">設定の考え方 ↗</a></h2>
       <div class="group">
         <div class="field"><label for="spreadAdd">運用利回り上乗せ（国債対比, %）<span class="pill cal">校正</span></label><span class="val" id="spreadAddv"></span><input type="range" id="spreadAdd" min="0" max="2.5" step="0.1" value="1.5"></div>
         <div class="field"><label for="clawback">早期解約時の手数料戻入率 (%)</label><span class="val" id="clawbackv"></span><input type="range" id="clawback" min="0" max="100" step="5" value="50"></div>
@@ -214,10 +217,10 @@ textarea{width:100%;font:inherit;font-family:var(--mono);font-size:.74rem;paddin
     </div>
 
     <div class="panel" data-top="out" data-sub="optimize" data-title="商品スペック提案">
-      <h2>外部条件を固定して、販売総量が最大になる商品案を探す</h2>
+      <h2>外部条件を固定して、販売総量が最大になる商品案を探す <a class="help-link" href="guide.html#optimization" target="_blank" rel="noopener">設定の考え方 ↗</a></h2>
       <p class="note">現在の外部環境・競合・販売体制・保有・収益前提・効用ウェイトを固定し、指定した商品仕様の候補を全件比較します。平均契約保険料も固定します。</p>
       <div class="opt-controls" id="optSettings">
-        <label>最大化する指標<select id="optObjective"><option value="anp">5年間の累計新契約ANP</option><option value="premium">5年間の保険料合計（モデル値）</option><option value="count">5年間の新契約件数</option></select></label>
+        <label>最大化する指標<select id="optObjective"><option value="anp">5年間の累計新契約ANP</option><option value="premium" selected>5年間の払込保険料総額（モデル値）</option><option value="count">5年間の新契約件数</option></select></label>
         <label>通貨<select id="optCcy"><option value="current">現在の通貨に固定</option><option value="all">米ドル・豪ドルを比較</option><option value="USD">米ドルに固定</option><option value="AUD">豪ドルに固定</option></select></label>
         <label>払込形態<select id="optPtype"><option value="current">現在の払込形態に固定</option><option value="all">一時払・平準払を比較</option><option value="single">一時払に固定</option><option value="level">平準払に固定</option></select></label>
         <label>MVA<select id="optMva"><option value="all">あり・なしを比較</option><option value="current">現在の設定に固定</option><option value="1">ありに固定</option><option value="0">なしに固定</option></select></label>
@@ -238,7 +241,7 @@ textarea{width:100%;font:inherit;font-family:var(--mono);font-size:.74rem;paddin
     </div>
 
     <div class="panel" data-top="in" data-sub="comp" data-title="競合商品">
-      <h2>競合商品テーブル <span class="pill data">公表利率＋重要情報シート</span></h2>
+      <h2>競合商品テーブル <span class="pill data">公表利率＋重要情報シート</span> <a class="help-link" href="guide.html#competitors" target="_blank" rel="noopener">設定の考え方 ↗</a></h2>
       <div class="note" style="margin-bottom:6px">積立利率・期間は各社公表値、解約控除（初年度）・MVA・為替手数料・販売手数料（初年度＋継続の累計）は販売会社が公開する「重要情報シート」から収録。「基準国債」は公表時点の10年国債利回りで、モデルはその差（利率−基準）を使う。保証の列は「円建て保険金最低保証特約あり＝元本確保」「目標値設定可＝目標到達型」で近似。「販売力」は自社=1.0基準の相対値<span class="pill assume">仮定</span>。</div>
       <div class="row" id="compFilter" style="margin-bottom:8px;gap:6px 10px">
         <span class="note">カタログから条件で取得：</span>
@@ -258,7 +261,7 @@ textarea{width:100%;font:inherit;font-family:var(--mono);font-size:.74rem;paddin
     </div>
 
     <div class="panel" data-top="in" data-sub="weights" data-title="効用ウェイト推定">
-      <h2>効用ウェイト推定（コンジョイント調査）</h2>
+      <h2>効用ウェイト推定（コンジョイント調査） <a class="help-link" href="guide.html#weights" target="_blank" rel="noopener">設定の考え方 ↗</a></h2>
       <p class="note" style="max-width:72ch">商品別の販売実績が公開されていないため（会社横断回帰も試したが識別不能、仕様書§4参照）、販売担当者への選択型調査で「どの仕様がどれだけ提案意向に効くか」を推定します。<a href="conjoint-survey.html">調査ページ「外貨建て年金 商品選好調査」</a>で集めた<b>回答コード</b>を1行ずつ貼り、「推定」を押すと条件付きロジットでウェイトを求め、「適用」でシミュレーターの効用式に反映します。</p>
       <div class="tablewrap" style="margin:8px 0"><table id="tW"></table></div>
       <textarea id="codes" placeholder="CJ1-123456789-123412341234-11&#10;CJ1-…（1行に1コード）" style="min-height:90px"></textarea>
@@ -438,7 +441,7 @@ cost<sub>cap</sub> = capRatio · hurdle · min(T,10) · π
       </ul>
       <h3>13. 商品スペック提案（制約付き全候補比較）</h3>
       <p>探索開始時の入力をスナップショットとして固定し、既存の model(p) を各商品候補に適用する。外部環境、競合、チャネル、保有・循環前提、収益前提、平均契約保険料、効用ウェイトは探索しない。通貨・払込形態は既定では現在値に固定し、比較を許可した場合だけ候補に含める。</p>
-      <p>目的関数は5年間の累計ANP（循環販売を含む、既定）、premTotal の5年合計、または件数の5年合計。平準払の premTotal は各年度の新契約年払保険料で、過年度契約の継続払込は加算しない。制約は粗利益率（保険料比・期間累計）の下限で、既定は0%。無効にもできる。</p>
+      <p>目的関数はpremTotal の5年合計（既定）、5年間の累計ANP、または件数の5年合計。いずれも循環販売を含む。平準払の premTotal は各年度の新契約年払保険料で、過年度契約の継続払込は加算しない。制約は粗利益率（保険料比・期間累計）の下限で、既定は0%。無効にもできる。</p>
       <p>数値項目は指定した下限から刻み幅ごとの値、上限、範囲内の現在値を重複なしで比較する。目標到達型以外では目標値を現在値に保ち、同じ商品を重複探索しない。全候補を列挙し、目的関数の降順、同値なら粗利益率の降順で上位3件を表示する。候補数は100万件まで。処理を分割して中止を受け付け、入力・ウェイト・探索設定の変更で進行中の探索を中止し、過去結果の反映を無効にする。</p>
       <p>結果は指定した離散候補の範囲内の最大値であり、連続領域の大域最適解ではない。商品化の実現可能性、保証・MVAに伴う実務コストは既存モデルの限界に従う。反映時は商品仕様だけを変更し、元の数式・係数・データは変更しない。</p>
     </div>
@@ -607,7 +610,7 @@ const OPT_FIELDS=[
   {key:'comm',label:'累計販売手数料 (%)',min:1,max:9,unit:0.25,lo:2,hi:8,step:1}
 ];
 const OPT_PRODUCT_KEYS=['ccy','ptype','mva','guar',...OPT_FIELDS.map(f=>f.key)];
-const OPT_METRICS={anp:'5年間の累計新契約ANP',premium:'5年間の保険料合計（モデル値）',count:'5年間の新契約件数'};
+const OPT_METRICS={anp:'5年間の累計新契約ANP',premium:'5年間の払込保険料総額（モデル値）',count:'5年間の新契約件数'};
 function optMetric(m,key){return key==='anp'?m.years[4].cum:m.years.reduce((s,y)=>s+(key==='premium'?y.premTotal:y.cnt),0)}
 function optDefaultRanges(){return Object.fromEntries(OPT_FIELDS.map(f=>[f.key,{enabled:true,min:f.lo,max:f.hi,step:f.step}]))}
 function optGrid(base,cfg){
@@ -923,7 +926,7 @@ function renderOptResult(result){
   const rows=[
     [OPT_METRICS[cfg.objective],c=>optFormatMetric(c.m,cfg.objective)],
     ['5年間の累計新契約ANP',c=>yen(c.m.years[4].cum)],
-    ['5年間の保険料合計（モデル値）',c=>optFormatMetric(c.m,'premium')],
+    ['5年間の払込保険料総額（モデル値）',c=>optFormatMetric(c.m,'premium')],
     ['5年間の新契約件数',c=>optFormatMetric(c.m,'count')],
     ['粗利益率（保険料比・期間累計）',c=>pct(c.m.grossMargin,2)],
     ['想定粗利益（発売3年目・億円/年）',c=>c.m.profit.toFixed(1)],

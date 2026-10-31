@@ -368,7 +368,7 @@ textarea{width:100%;font:inherit;font-family:var(--mono);font-size:.74rem;paddin
         <tr><td><math><msubsup><mi>r</mi><mrow><mi>i</mi><mo>,</mo><mi>t</mi></mrow><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup></math></td><td>シナリオs・時点tの国iの10年国債利回り。i∈{US, AU, JP}。</td><td>数式では小数表示（5%＝0.05）。画面・コードの金利%値を100で割ったもの。</td></tr>
         <tr><td><math><msubsup><mi>S</mi><mi>t</mi><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup></math></td><td>USD/JPY。1米ドル当たりの円価格。</td><td>初期値は入力された為替水準。AUD/JPYは、収録データ末尾の1豪ドル当たり米ドルを掛けて換算。</td></tr>
         <tr><td><math><mrow><msub><mi>g</mi><mtext>FX</mtext></msub><mo>,</mo><msub><mi>σ</mi><mtext>FX</mtext></msub></mrow></math></td><td>年率の対数為替ドリフト、および年次対数為替変化の標準偏差。</td><td>gは入力した円安トレンド%を100で割る。σは月次系列の12か月対数変化から推定。</td></tr>
-        <tr><td><math><mrow><msub><mi>θ</mi><mi>i</mi></msub><mo>,</mo><msub><mi>κ</mi><mi>i</mi></msub><mo>,</mo><msub><mi>σ</mi><mi>i</mi></msub></mrow></math></td><td>金利の平均回帰水準、年当たりの平均回帰係数、年次金利変化の標準偏差。</td><td>θは直近最大60か月平均、κ＝0.15は仮定、σは12か月変化から推定。σも小数金利の単位。</td></tr>
+        <tr><td><math><mrow><msub><mi>θ</mi><mi>i</mi></msub><mo>,</mo><msub><mi>κ</mi><mi>i</mi></msub><mo>,</mo><msub><mi>σ</mi><mi>i</mi></msub></mrow></math></td><td>金利の平均回帰水準、年当たりの平均回帰係数、年次金利変化の標準偏差。</td><td>θは実行時の入力金利に固定、κ＝0.15は仮定、σは12か月変化から推定。σも小数金利の単位。</td></tr>
         <tr><td><math><mrow><msubsup><mi>A</mi><mi>t</mi><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup><mo>,</mo><msub><mi>π</mi><mn>0</mn></msub></mrow></math></td><td>シナリオsの第t年度新契約ANP（億円）、および固定した商品・販売・収益等の前提一式。</td><td>ANPは新規開拓と循環販売の合計。商品仕様・競合・効用ウェイト等はシナリオ間で固定。</td></tr>
       </tbody></table></div>
 
@@ -405,7 +405,7 @@ textarea{width:100%;font:inherit;font-family:var(--mono);font-size:.74rem;paddin
       <div class="actuarial-equation" tabindex="0" role="region" aria-label="標準偏差と相関係数の推定式"><math display="block">
         <mrow><msub><mi>σ</mi><mi>a</mi></msub><mo>=</mo><msqrt><msub><mover><mi>C</mi><mo>^</mo></mover><mi>aa</mi></msub></msqrt><mo>,</mo><mspace width="1em"/><msub><mover><mi>R</mi><mo>^</mo></mover><mi>ab</mi></msub><mo>=</mo><mfrac><msub><mover><mi>C</mi><mo>^</mo></mover><mi>ab</mi></msub><mrow><msub><mi>σ</mi><mi>a</mi></msub><msub><mi>σ</mi><mi>b</mi></msub></mrow></mfrac><mspace width="1em"/><mo>(</mo><mi>a</mi><mo>,</mo><mi>b</mi><mo>∈</mo><mo>{</mo><mtext>US, AU, JP, FX</mtext><mo>}</mo><mo>)</mo></mrow>
       </math><span class="equation-number">(9.7)</span></div>
-      <p>金利の平均回帰水準は、q＝min(60,M)として <math><mrow><msub><mi>θ</mi><mi>i</mi></msub><mo>=</mo><mfrac><mn>1</mn><mi>q</mi></mfrac><munderover><mo>∑</mo><mrow><mi>m</mi><mo>=</mo><mi>M</mi><mo>−</mo><mi>q</mi><mo>+</mo><mn>1</mn></mrow><mi>M</mi></munderover><msub><mi>r</mi><mrow><mi>i</mi><mo>,</mo><mi>m</mi></mrow></msub></mrow></math> とする。標本平均の12か月変化をシナリオのドリフトに直接採用することはなく、金利には平均回帰項、為替には入力ドリフトを使う。推定値は「実績データ」に表示する。月次データが36点未満の場合は再推定せず、それまでの設定を保持する。</p>
+      <p>金利の平均回帰水準は <math><mrow><msub><mi>θ</mi><mi>i</mi></msub><mo>=</mo><msub><mi>r</mi><mrow><mi>i</mi><mo>,</mo><mn>0</mn></mrow></msub></mrow></math>、すなわち実行時の入力金利とする。過去の低金利水準への平均回帰だけで日米金利差や外貨建て比率が変わる効果を除き、現在の前提を中心とする経済シナリオを比較する。収録データの直近最大60か月平均は実績画面の参考値として保持するが、モンテカルロの回帰先には使わない。標本平均の12か月変化をドリフトに直接採用せず、金利には入力水準への平均回帰項、為替には入力ドリフトを使う。月次データが36点未満の場合は相関・ボラを再推定せず、それまでの設定を保持する。非線形な売上モデル、金利下限、為替変動のため、年度別ANPの中央値が決定論の基準値と一致することまでは仮定しない。</p>
 
       <h4>9.6 経済シナリオから新契約ANPへの写像</h4>
       <p>固定した前提をπ₀とし、既存の5年間売上モデルを <math><mi>ℳ</mi></math> と書く。各年度の経済状態と、当年度の算術為替騰落率をモデルに渡し、その出力の第t年度成分を取り出す。</p>
@@ -427,7 +427,7 @@ textarea{width:100%;font:inherit;font-family:var(--mono);font-size:.74rem;paddin
         <mrow><msub><mover><mi>Q</mi><mo>^</mo></mover><mrow><mi>α</mi><mo>,</mo><mi>t</mi></mrow></msub><mo>=</mo><msub><mi>A</mi><mrow><mo>(</mo><msub><mi>k</mi><mi>α</mi></msub><mo>)</mo><mo>,</mo><mi>t</mi></mrow></msub><mo>,</mo><mspace width="1em"/><msub><mi>k</mi><mi>α</mi></msub><mo>=</mo><mn>1</mn><mo>+</mo><mo>⌊</mo><mi>α</mi><mo>(</mo><mi>N</mi><mo>−</mo><mn>1</mn><mo>)</mo><mo>⌋</mo><mo>,</mo><mspace width="1em"/><mi>α</mi><mo>∈</mo><mo>{</mo><mn>0.10</mn><mo>,</mo><mn>0.50</mn><mo>,</mo><mn>0.90</mn><mo>}</mo></mrow>
       </math><span class="equation-number">(9.11)</span></div>
       <p>N＝1,000のとき、P10・中央値・P90は、それぞれ100番目・500番目・900番目の標本値である。帯は年度ごとのP10〜P90であり、5年間の経路全体を一定確率で覆う同時区間でも、実績値に対する信頼区間でもない。決定論の線は、現在の入力条件で経済状態を固定した元の売上モデルの値を表す。</p>
-      <p class="actuarial-caption">この記載は現行コードの数理的な表現であり、計算処理の変更を伴わない。死亡・生存確率、責任準備金、割引現価、リスク中立評価を追加したものではなく、パラメータ推定誤差・競合改定・ウェイト変動も経路ごとには発生させない。</p>
+      <p class="actuarial-caption">この記載は現行コードの数理的な表現である。金利の回帰先は2026-10-31改訂で、過去平均から実行時の入力金利へ変更した。死亡・生存確率、責任準備金、割引現価、リスク中立評価を追加したものではなく、パラメータ推定誤差・競合改定・ウェイト変動も経路ごとには発生させない。</p>
 
       <h3>10. データ</h3>
       <div class="tablewrap"><table class="spec-t">
@@ -808,7 +808,7 @@ document.getElementById('importJson').addEventListener('click',()=>{const b=docu
 function randn(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}
 function cholesky(A){const n=A.length,L=Array.from({length:n},()=>new Array(n).fill(0));for(let i=0;i<n;i++)for(let j=0;j<=i;j++){let s=A[i][j];for(let k=0;k<j;k++)s-=L[i][k]*L[j][k];L[i][j]=i===j?Math.sqrt(Math.max(s,1e-9)):s/L[j][j]}return L}
 function runMC(){
-  const p=readState();const N=1000;const paths=[];const L=cholesky(DYN.corr);const [sU,sA,sJ,sF]=DYN.sig,[mU,mA,mJ]=DYN.mean;
+  const p=readState();const N=1000;const paths=[];const L=cholesky(DYN.corr);const [sU,sA,sJ,sF]=DYN.sig,[mU,mA,mJ]=[p.us10,p.au10,p.jp10];
   for(let k=0;k<N;k++){
     let r=p.us10,ra=p.au10,rj=p.jp10,fx=p.usdjpy;const ys=[];
     for(let t=0;t<5;t++){
@@ -831,7 +831,7 @@ function runMC(){
     {label:'決定論（現在の前提）',data:det.map(v=>+v.toFixed(1)),borderColor:css('--s2'),borderDash:[5,4],backgroundColor:css('--s2'),tension:.2}]},
     options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,title:{display:true,text:'ANP 億円'}}},plugins:{legend:{position:'bottom',labels:{filter:i=>i.text!=='P10'&&i.text!=='P90'}}}}});
   const s3=stats[2];
-  document.getElementById('mcNote').textContent=`3年目ANP: 中央値 ${s3.p50.toFixed(1)}億円、P10 ${s3.p10.toFixed(1)} 〜 P90 ${s3.p90.toFixed(1)}億円（${N}経路）。相関・ボラ・長期平均は2015年以降の月次データから推定: σ 米${sU.toFixed(2)} 豪${sA.toFixed(2)} 日${sJ.toFixed(2)}pt・為替${(sF*100).toFixed(1)}%、相関 米-為替 ${DYN.corr[0][3].toFixed(2)}, 米-豪 ${DYN.corr[0][1].toFixed(2)}, 米-日 ${DYN.corr[0][2].toFixed(2)}。`;
+  document.getElementById('mcNote').textContent=`3年目ANP: 中央値 ${s3.p50.toFixed(1)}億円、P10 ${s3.p10.toFixed(1)} 〜 P90 ${s3.p90.toFixed(1)}億円（${N}経路）。金利の回帰先は実行時の入力水準（米${mU.toFixed(2)}・豪${mA.toFixed(2)}・日${mJ.toFixed(2)}%）に固定。相関・ボラは収録月次データから推定: σ 米${sU.toFixed(2)} 豪${sA.toFixed(2)} 日${sJ.toFixed(2)}pt・為替${(sF*100).toFixed(1)}%、相関 米-為替 ${DYN.corr[0][3].toFixed(2)}, 米-豪 ${DYN.corr[0][1].toFixed(2)}, 米-日 ${DYN.corr[0][2].toFixed(2)}。`;
 }
 
 // ===== History panel =====

@@ -106,18 +106,34 @@ textarea{width:100%;font:inherit;font-family:var(--mono);font-size:.74rem;paddin
 .scen-list{display:flex;flex-direction:column;gap:4px;font-size:.8rem}
 .scen-list .it{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:3px 0}
 .scen-list .it b{font-weight:500}
+.opt-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px 16px;margin:12px 0}
+.opt-controls label{display:grid;gap:4px;font-size:.8rem}
+.opt-controls select,.opt-controls input,.opt-ranges input[type=number]{font:inherit;padding:6px;border:1px solid var(--line);background:var(--bg);color:var(--fg);min-width:0}
+.opt-ranges input[type=number]{width:6.5em}
+.opt-ranges th:first-child{min-width:165px}
+.opt-ranges label{cursor:pointer}
+.opt-ranges input[type=checkbox]{accent-color:var(--accent)}
+.opt-status{margin:12px 0;font-size:.82rem;color:var(--accent)}
+.opt-status progress{display:block;width:100%;height:6px;margin-top:8px;accent-color:var(--accent)}
+.opt-results{border-top:1px solid var(--line);margin-top:16px;padding-top:14px}
+.opt-results h3{color:var(--fg);font-size:.88rem;letter-spacing:0;margin:12px 0 8px}
+.opt-diff{color:var(--good)}
+.opt-fixed{margin:10px 0;padding:8px 10px;border-left:2px solid var(--accent);background:var(--bg)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:600px){.opt-controls{grid-template-columns:1fr 1fr}.opt-controls label{font-size:.75rem}.opt-controls select{width:100%}.opt-ranges th,.opt-ranges td{padding:5px}.opt-ranges input[type=number]{width:5em}}
 </style>
 </head>
 <body>
 <header>
   <div>
     <h1>外貨建て個人年金 売上シミュレーター</h1>
-    <div class="sub">新商品の仕様・外部環境・競合を変えて、年換算保険料（ANP）・件数・収益性の変化を見る — v0.3</div>
+    <div class="sub">新商品の仕様・外部環境・競合を変えて、年換算保険料（ANP）・件数・収益性の変化を見る — v0.4</div>
   </div>
   <div class="kpi" id="kpi"></div>
   <div class="row">
     <input type="text" id="scenName" class="namebox" placeholder="シナリオ名">
     <button class="btn" id="saveScen">シナリオ保存</button>
+    <button class="btn" id="openOptimizer">商品スペック提案</button>
     <button class="btn primary" id="runMC">モンテカルロ実行</button>
   </div>
 </header>
@@ -195,6 +211,30 @@ textarea{width:100%;font:inherit;font-family:var(--mono);font-size:.74rem;paddin
     <div class="panel" data-top="out" data-sub="summary" data-title="サマリー">
       <h2>予測サマリー（発売3年目・定常状態）</h2>
       <div class="tiles" id="tiles"></div>
+    </div>
+
+    <div class="panel" data-top="out" data-sub="optimize" data-title="商品スペック提案">
+      <h2>外部条件を固定して、販売総量が最大になる商品案を探す</h2>
+      <p class="note">現在の外部環境・競合・販売体制・保有・収益前提・効用ウェイトを固定し、指定した商品仕様の候補を全件比較します。平均契約保険料も固定します。</p>
+      <div class="opt-controls" id="optSettings">
+        <label>最大化する指標<select id="optObjective"><option value="anp">5年間の累計新契約ANP</option><option value="premium">5年間の保険料合計（モデル値）</option><option value="count">5年間の新契約件数</option></select></label>
+        <label>通貨<select id="optCcy"><option value="current">現在の通貨に固定</option><option value="all">米ドル・豪ドルを比較</option><option value="USD">米ドルに固定</option><option value="AUD">豪ドルに固定</option></select></label>
+        <label>払込形態<select id="optPtype"><option value="current">現在の払込形態に固定</option><option value="all">一時払・平準払を比較</option><option value="single">一時払に固定</option><option value="level">平準払に固定</option></select></label>
+        <label>MVA<select id="optMva"><option value="all">あり・なしを比較</option><option value="current">現在の設定に固定</option><option value="1">ありに固定</option><option value="0">なしに固定</option></select></label>
+        <label>最低保証<select id="optGuar"><option value="all">3種類を比較</option><option value="current">現在の設定に固定</option><option value="none">なしに固定</option><option value="target">目標到達型に固定</option><option value="principal">円元本確保に固定</option></select></label>
+        <label><span><input type="checkbox" id="optMarginOn" checked> 最低粗利益率で絞る</span><input type="number" id="optMinMargin" aria-label="最低粗利益率 (%)" min="-100" max="100" step="0.1" value="0"></label>
+      </div>
+      <p class="note">粗利益率は保険料比・期間累計の%です。保険料合計は各年度の新契約保険料の5年合計で、平準払の将来継続保険料は含みません。ANP・件数には循環販売を含みます。</p>
+      <details id="optRangeDetails" open>
+        <summary>探索する範囲と刻み幅</summary>
+        <div class="tablewrap"><table class="opt-ranges"><thead><tr><th>変更する項目</th><th>下限</th><th>上限</th><th>刻み幅</th></tr></thead><tbody id="optRanges"></tbody></table></div>
+        <p class="note">チェックを外すと現在値に固定。下限から刻み幅ごとの値に、上限と範囲内の現在値を加えます。目標値は目標到達型だけで比較します。1回の上限は100万候補です。</p>
+      </details>
+      <div class="row" style="margin-top:12px"><button class="btn primary" id="runOptimizer">最大販売案を探す</button><button class="btn" id="cancelOptimizer" disabled>中止</button><button class="btn" id="resetOptRanges">探索範囲を初期値に戻す</button></div>
+      <div class="opt-status" role="status" aria-live="polite"><span id="optStatus">探索範囲を確認して実行してください。</span><progress id="optProgress" max="1" value="0" hidden aria-label="商品候補の探索進捗"></progress></div>
+      <div id="optFixed" class="opt-fixed note" hidden></div>
+      <div id="optResults" class="opt-results" hidden></div>
+      <p class="note">提案は指定した候補範囲内・現行モデル上の最大案です。連続値全体の最適解や実際の販売量を保証するものではありません。保証・MVA等の実務コストを十分に織り込んでいないため、商品化には数理・運用・法務による別途検証が必要です。</p>
     </div>
 
     <div class="panel" data-top="in" data-sub="comp" data-title="競合商品">
@@ -276,7 +316,7 @@ textarea{width:100%;font:inherit;font-family:var(--mono);font-size:.74rem;paddin
 
     <div class="panel spec" id="spec" data-top="spec" data-sub="spec-intro" data-title="概要">
       <h2>仕様書 — 前提・数式・データ</h2>
-      <div class="note" style="margin-bottom:10px">v0.3（2026-10-31）。<span class="pill data">実データ</span>は公開統計から取得した値、<span class="pill cal">回帰／校正</span>は実データから推定・校正した係数、<span class="pill assume">仮定</span>は統計に無いため置いた係数で差し替え前提。</div>
+      <div class="note" style="margin-bottom:10px">v0.4（2026-10-31）。<span class="pill data">実データ</span>は公開統計から取得した値、<span class="pill cal">回帰／校正</span>は実データから推定・校正した係数、<span class="pill assume">仮定</span>は統計に無いため置いた係数で差し替え前提。</div>
 
       <h3>1. 目的と範囲</h3>
       <p>外貨建て個人年金保険（定額・一時払中心）の新商品について、商品仕様・外部環境・競合を入力に、発売後5年間の新契約ANP・件数・粗利益を推定する。競合は商品テーブルで明示し、多項ロジットでシェアを配分する。</p>
@@ -396,6 +436,11 @@ cost<sub>cap</sub> = capRatio · hurdle · min(T,10) · π
         <li>循環モデルは到達確率を簡略化（為替の経路・契約時点の為替水準を無視）。</li>
         <li>収益性は粗利益の近似。準備金・税・再保険・ヘッジコストは未考慮。</li>
       </ul>
+      <h3>13. 商品スペック提案（制約付き全候補比較）</h3>
+      <p>探索開始時の入力をスナップショットとして固定し、既存の model(p) を各商品候補に適用する。外部環境、競合、チャネル、保有・循環前提、収益前提、平均契約保険料、効用ウェイトは探索しない。通貨・払込形態は既定では現在値に固定し、比較を許可した場合だけ候補に含める。</p>
+      <p>目的関数は5年間の累計ANP（循環販売を含む、既定）、premTotal の5年合計、または件数の5年合計。平準払の premTotal は各年度の新契約年払保険料で、過年度契約の継続払込は加算しない。制約は粗利益率（保険料比・期間累計）の下限で、既定は0%。無効にもできる。</p>
+      <p>数値項目は指定した下限から刻み幅ごとの値、上限、範囲内の現在値を重複なしで比較する。目標到達型以外では目標値を現在値に保ち、同じ商品を重複探索しない。全候補を列挙し、目的関数の降順、同値なら粗利益率の降順で上位3件を表示する。候補数は100万件まで。処理を分割して中止を受け付け、入力・ウェイト・探索設定の変更で進行中の探索を中止し、過去結果の反映を無効にする。</p>
+      <p>結果は指定した離散候補の範囲内の最大値であり、連続領域の大域最適解ではない。商品化の実現可能性、保証・MVAに伴う実務コストは既存モデルの限界に従う。反映時は商品仕様だけを変更し、元の数式・係数・データは変更しない。</p>
     </div>
 </div>
 <div class="pane-nav" id="panenav"></div>
@@ -552,6 +597,67 @@ function model(p){
   return {ref,rate,mkt,Mall,wccy,fc,cbar,U:Uown,share,push,pReach,persist,kNet,capCost,kbar,years,spread,grossMargin,profit:steadyPrem*grossMargin/100,phi};
 }
 
+// ===== Product optimization: finite candidate grid, existing model unchanged =====
+const OPT_FIELDS=[
+  {key:'credit',label:'予定利率 (%)',min:0.5,max:7,unit:0.05,lo:3,hi:6,step:0.25},
+  {key:'term',label:'据置／払込期間 (年)',min:3,max:25,unit:1,lo:5,hi:15,step:5},
+  {key:'sc',label:'初年度解約控除 (%)',min:0,max:10,unit:0.5,lo:0,hi:10,step:2.5},
+  {key:'fxfee',label:'為替手数料 (銭)',min:0,max:50,unit:1,lo:0,hi:50,step:25},
+  {key:'target',label:'目標到達値 (%)',min:103,max:130,unit:1,lo:105,hi:120,step:5},
+  {key:'comm',label:'累計販売手数料 (%)',min:1,max:9,unit:0.25,lo:2,hi:8,step:1}
+];
+const OPT_PRODUCT_KEYS=['ccy','ptype','mva','guar',...OPT_FIELDS.map(f=>f.key)];
+const OPT_METRICS={anp:'5年間の累計新契約ANP',premium:'5年間の保険料合計（モデル値）',count:'5年間の新契約件数'};
+function optMetric(m,key){return key==='anp'?m.years[4].cum:m.years.reduce((s,y)=>s+(key==='premium'?y.premTotal:y.cnt),0)}
+function optDefaultRanges(){return Object.fromEntries(OPT_FIELDS.map(f=>[f.key,{enabled:true,min:f.lo,max:f.hi,step:f.step}]))}
+function optGrid(base,cfg){
+  if(!Object.hasOwn(OPT_METRICS,cfg.objective))throw new Error('最大化する指標を選んでください。');
+  if(cfg.minMargin!==null&&(!Number.isFinite(cfg.minMargin)||Math.abs(cfg.minMargin)>100))throw new Error('最低粗利益率は−100〜100%で入力してください。');
+  const values={};
+  for(const f of OPT_FIELDS){
+    const r=cfg.ranges[f.key];
+    if(!r.enabled){values[f.key]=[base[f.key]];continue}
+    const aligned=(v,origin)=>Math.abs((v-origin)/f.unit-Math.round((v-origin)/f.unit))<1e-6;
+    if(![r.min,r.max,r.step].every(Number.isFinite)||r.min<f.min||r.max>f.max||r.min>r.max||r.step<f.unit||!aligned(r.min,f.min)||!aligned(r.max,f.min)||!aligned(r.step,0))throw new Error(`${f.label}：${f.min}〜${f.max}、${f.unit}刻みで下限≦上限、刻み幅＞0を指定してください。`);
+    const a=[];for(let i=0;i<=Math.floor((r.max-r.min)/r.step+1e-8);i++)a.push(+(r.min+i*r.step).toFixed(8));
+    a.push(r.max);if(base[f.key]>=r.min&&base[f.key]<=r.max)a.push(base[f.key]);
+    values[f.key]=[...new Set(a)].sort((a,b)=>a-b);
+  }
+  const allowed={ccy:['USD','AUD'],ptype:['single','level'],mva:[0,1],guar:['none','target','principal']};
+  for(const [key,all] of Object.entries(allowed)){
+    const a=cfg.categories[key];if(!a?.length||a.some(v=>!all.includes(v)))throw new Error('商品仕様の選択肢が不正です。');
+    values[key]=[...new Set(a)];
+  }
+  const axes=['ccy','ptype','mva','guar',...OPT_FIELDS.filter(f=>f.key!=='target').map(f=>f.key)];
+  const total=axes.filter(k=>k!=='guar').reduce((n,k)=>n*values[k].length,1)*values.guar.reduce((n,g)=>n+(g==='target'?values.target.length:1),0);
+  if(total>1e6)throw new Error(`候補が${total.toLocaleString('ja-JP')}件あります。100万件以内になるよう範囲・刻み幅・固定項目を調整してください。`);
+  function* candidates(i=0,spec={}){
+    if(i===axes.length){for(const target of spec.guar==='target'?values.target:[base.target])yield {...spec,target};return}
+    const key=axes[i];for(const v of values[key])yield* candidates(i+1,{...spec,[key]:v});
+  }
+  return {total,values,candidates:candidates()};
+}
+async function optSearch(base,cfg,evaluate,{cancelled=()=>false,onProgress=()=>{},yieldControl=()=>new Promise(resolve=>setTimeout(resolve,0))}={}){
+  const grid=optGrid(base,cfg),top=[];let done=0,feasible=0,invalid=0;
+  const abort=()=>{if(cancelled()){const e=new Error('探索を中止しました。');e.name='AbortError';throw e}};
+  const compare=(a,b)=>b.score-a.score||b.m.grossMargin-a.m.grossMargin||a.order-b.order;
+  const iterator=grid.candidates;let next=iterator.next();
+  while(!next.done){
+    abort();const start=performance.now();
+    do{
+      const spec=next.value,m=evaluate({...base,...spec}),score=optMetric(m,cfg.objective);done++;
+      if(!Number.isFinite(score)||!Number.isFinite(m.grossMargin)||!m.years.every(y=>[y.anp,y.premTotal,y.cnt].every(Number.isFinite)))invalid++;
+      else if(cfg.minMargin===null||m.grossMargin>=cfg.minMargin){
+        feasible++;const entry={spec,m,score,order:done};
+        if(top.length<3||compare(entry,top[top.length-1])<0){top.push(entry);top.sort(compare);if(top.length>3)top.pop()}
+      }
+      next=iterator.next();
+    }while(!next.done&&performance.now()-start<12);
+    onProgress({done,total:grid.total,feasible,invalid});await yieldControl();
+  }
+  abort();return {top,done,total:grid.total,feasible,invalid};
+}
+
 // ===== Rendering =====
 function yen(v,unit='億円'){return (Math.round(v*10)/10).toLocaleString('ja-JP',{maximumFractionDigits:1})+' '+unit}
 function pct(v,d=1){return v.toFixed(d)+'%'}
@@ -607,6 +713,7 @@ function render(){
     options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,scales:{x:{title:{display:true,text:'ANP変化率 (%)'}},y:{ticks:{font:{family:css('--body')}}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>(c.raw>0?'+':'')+c.raw+'%'}}}}});
 
   renderScen(p,m);
+  refreshOptValidity();
 }
 
 // ===== Competitor table =====
@@ -770,6 +877,96 @@ document.getElementById('estimate').addEventListener('click',estimate);
 document.getElementById('applyW').addEventListener('click',applyW);
 document.getElementById('resetW').addEventListener('click',()=>{W={...W_DEFAULT};renderW();render();toast('既定ウェイトに戻しました')});
 document.getElementById('demoW').addEventListener('click',demoCodes);
+
+// ===== Product optimization UI =====
+let OPT_RESULT=null,OPT_JOB=null,OPT_SEQ=0;
+const optEl=id=>document.getElementById(id);
+function optSignature(){return JSON.stringify({p:readState(),W,reg:REG.coef,aud:latest(HIST.usdaud)})}
+function optConfig(){
+  const base=readState(),categories={};
+  for(const [key,id,all] of [['ccy','optCcy',['USD','AUD']],['ptype','optPtype',['single','level']],['mva','optMva',[0,1]],['guar','optGuar',['none','target','principal']]]){
+    const v=optEl(id).value;categories[key]=v==='current'?[base[key]]:v==='all'?all:[key==='mva'?+v:v];
+  }
+  return {objective:optEl('optObjective').value,minMargin:optEl('optMarginOn').checked?optEl('optMinMargin').valueAsNumber:null,categories,
+    ranges:Object.fromEntries(OPT_FIELDS.map(f=>[f.key,{enabled:optEl('opt-'+f.key+'-on').checked,...Object.fromEntries(['min','max','step'].map(k=>[k,optEl('opt-'+f.key+'-'+k).valueAsNumber]))}]))};
+}
+function optConfigSignature(){return JSON.stringify(optConfig())}
+function initOptRanges(){
+  optEl('optRanges').innerHTML=OPT_FIELDS.map(f=>`<tr><th scope="row"><label><input type="checkbox" id="opt-${f.key}-on" checked> ${f.label}</label></th>${[['min','下限',f.lo],['max','上限',f.hi],['step','刻み幅',f.step]].map(([k,label,v])=>`<td><input type="number" id="opt-${f.key}-${k}" aria-label="${f.label} ${label}" min="${k==='step'?f.unit:f.min}" ${k==='step'?'':`max="${f.max}"`} step="${f.unit}" value="${v}"></td>`).join('')}</tr>`).join('');
+}
+function syncOptInputs(){
+  OPT_FIELDS.forEach(f=>['min','max','step'].forEach(k=>{optEl('opt-'+f.key+'-'+k).disabled=!optEl('opt-'+f.key+'-on').checked}));
+  optEl('optMinMargin').disabled=!optEl('optMarginOn').checked;
+}
+function optBusy(busy){optEl('runOptimizer').disabled=busy;optEl('cancelOptimizer').disabled=!busy;optEl('optProgress').hidden=!busy}
+function stopOpt(message){
+  OPT_SEQ++;OPT_JOB=null;optBusy(false);optEl('optStatus').textContent=message;
+}
+function refreshOptValidity(){
+  const signature=optSignature();
+  if(OPT_JOB&&OPT_JOB.signature!==signature)stopOpt('入力条件が変わったため探索を中止しました。再実行してください。');
+  if(OPT_RESULT&&(OPT_RESULT.signature!==signature||OPT_RESULT.configSignature!==optConfigSignature())){
+    OPT_RESULT.stale=true;optEl('optResults').querySelectorAll('[data-opt-apply]').forEach(b=>b.disabled=true);
+    optEl('optStatus').textContent='入力条件または探索設定が変わりました。表示中の結果は探索時点のものです。再実行してください。';
+  }
+}
+function optSettingsChanged(){
+  syncOptInputs();if(OPT_JOB)stopOpt('探索設定が変わったため中止しました。再実行してください。');refreshOptValidity();
+}
+function optFormatMetric(m,key){const v=optMetric(m,key);return key==='count'?Math.round(v).toLocaleString('ja-JP')+' 件':yen(v)}
+function optImprovement(value,base){if(!Number.isFinite(base)||base<=0)return '現在案との差 '+(value-base).toFixed(1);const d=(value/base-1)*100;return '現在案比 '+(d>=0?'+':'')+d.toFixed(1)+'%'}
+function optBoundary(spec,cfg){return OPT_FIELDS.filter(f=>cfg.ranges[f.key].enabled&&(f.key!=='target'||spec.guar==='target')&&(spec[f.key]===cfg.ranges[f.key].min||spec[f.key]===cfg.ranges[f.key].max)).map(f=>f.label.replace(/ \(.+\)/,'')).join('・')}
+function renderOptResult(result){
+  const {base,baseline,cfg}=result;
+  if(!result.top.length){optEl('optResults').hidden=true;optEl('optStatus').textContent=`${result.done.toLocaleString('ja-JP')}候補を比較しましたが、条件を満たす案はありません。最低粗利益率や探索範囲を見直してください。${result.invalid?' 数値計算不可 '+result.invalid+'件。':''}`;return}
+  const best=result.top[0],cols=[{spec:base,m:baseline},...result.top];
+  const rows=[
+    [OPT_METRICS[cfg.objective],c=>optFormatMetric(c.m,cfg.objective)],
+    ['5年間の累計新契約ANP',c=>yen(c.m.years[4].cum)],
+    ['5年間の保険料合計（モデル値）',c=>optFormatMetric(c.m,'premium')],
+    ['5年間の新契約件数',c=>optFormatMetric(c.m,'count')],
+    ['粗利益率（保険料比・期間累計）',c=>pct(c.m.grossMargin,2)],
+    ['想定粗利益（発売3年目・億円/年）',c=>c.m.profit.toFixed(1)],
+    ['通貨 / 払込形態',c=>c.spec.ccy+' / '+(c.spec.ptype==='single'?'一時払':'平準払')],
+    ['予定利率',c=>pct(c.spec.credit,2)],['据置／払込期間',c=>c.spec.term+'年'],
+    ['初年度解約控除',c=>pct(c.spec.sc,1)],['MVA',c=>c.spec.mva?'あり':'なし'],
+    ['為替手数料',c=>c.spec.fxfee+'銭'],['最低保証',c=>({none:'なし',target:'目標到達型',principal:'円元本確保'})[c.spec.guar]],
+    ['目標到達値',c=>c.spec.guar==='target'?c.spec.target+'%':'対象外'],['累計販売手数料',c=>pct(c.spec.comm,2)]
+  ];
+  const boundary=optBoundary(best.spec,cfg);
+  optEl('optResults').innerHTML=`<h3>候補範囲内の最大案</h3><div class="tiles"><div class="tile good"><div class="k">${OPT_METRICS[cfg.objective]}</div><div class="v">${optFormatMetric(best.m,cfg.objective)}</div><div class="d">${optImprovement(best.score,optMetric(baseline,cfg.objective))}</div></div><div class="tile"><div class="k">粗利益率（期間累計）</div><div class="v">${pct(best.m.grossMargin,2)}</div><div class="d">${cfg.minMargin===null?'最低粗利益率の制約なし':'下限 '+pct(cfg.minMargin,1)}</div></div></div><p class="note">最大案：${best.spec.ccy}・${best.spec.ptype==='single'?'一時払':'平準払'}、予定利率 ${pct(best.spec.credit,2)}、${best.spec.term}年、解約控除 ${pct(best.spec.sc,1)}、MVA ${best.spec.mva?'あり':'なし'}、為替手数料 ${best.spec.fxfee}銭、${({none:'保証なし',target:'目標到達型 '+best.spec.target+'%',principal:'円元本確保'})[best.spec.guar]}、累計販売手数料 ${pct(best.spec.comm,2)}。</p><button class="btn primary" data-opt-apply="0">最大案を商品仕様に反映</button><h3>現在案と上位${result.top.length}案の比較</h3><p class="note">表が収まらない場合は横にスクロールして候補を比較できます。</p><div class="tablewrap"><table><thead><tr><th>項目</th><th>探索時の現在案</th>${result.top.map((c,i)=>`<th>候補${i+1}${i===0?'（最大案）':''}<br><button class="btn small${i===0?' primary':''}" data-opt-apply="${i}">候補${i+1}を反映</button></th>`).join('')}</tr></thead><tbody>${rows.filter((r,i)=>i!==1||cfg.objective!=='anp').filter(r=>r[0]!==OPT_METRICS[cfg.objective]||r===rows[0]).map(([name,f])=>`<tr><th scope="row">${name}</th>${cols.map(c=>'<td class="num">'+f(c)+'</td>').join('')}</tr>`).join('')}</tbody></table></div>${boundary?`<p class="note">最大案は ${boundary} が探索範囲の端にあります。実務上許容できる場合は、範囲・刻み幅を変えて再比較してください。</p>`:''}<p class="note">同じ販売総量なら粗利益率が高い案を優先します。反映後は「シナリオ保存」で比較用に残せます。</p>`;
+  optEl('optResults').hidden=false;
+  optEl('optStatus').textContent=`全${result.done.toLocaleString('ja-JP')}候補の比較完了。条件適合 ${result.feasible.toLocaleString('ja-JP')}件。${result.invalid?' 数値計算不可 '+result.invalid+'件を除外。':''}`;
+}
+async function runOptimizer(){
+  let base,cfg;try{base=JSON.parse(JSON.stringify(readState()));cfg=optConfig();optGrid(base,cfg)}catch(e){optEl('optStatus').textContent=e.message;return}
+  const id=++OPT_SEQ,signature=optSignature(),configSignature=optConfigSignature();
+  OPT_RESULT=null;OPT_JOB={id,signature};optEl('optResults').hidden=true;optEl('optProgress').value=0;optBusy(true);
+  const fixed=optEl('optFixed');fixed.hidden=false;fixed.textContent=`固定した外部環境：米10年 ${pct(base.us10,2)}／豪10年 ${pct(base.au10,2)}／日10年 ${pct(base.jp10,2)}、USD/JPY ${base.usdjpy.toFixed(1)}、円安トレンド ${pct(base.fxtrend,1)}。競合 ${base.comp.length}商品、平均契約保険料 ${base.avgprem}万円。販売体制・保有・収益前提・効用ウェイトも現在値に固定。`;
+  optEl('optStatus').textContent='商品候補を比較しています…';
+  try{
+    const baseline=model(base);
+    const result=await optSearch(base,cfg,model,{cancelled:()=>id!==OPT_SEQ,onProgress:({done,total})=>{if(id!==OPT_SEQ)return;optEl('optProgress').value=done/total;optEl('optStatus').textContent=`比較中 ${done.toLocaleString('ja-JP')} / ${total.toLocaleString('ja-JP')}候補`}});
+    if(id!==OPT_SEQ)return;
+    OPT_RESULT={...result,base,baseline,cfg,signature,configSignature,stale:false};OPT_JOB=null;optBusy(false);renderOptResult(OPT_RESULT);
+  }catch(e){if(id!==OPT_SEQ)return;OPT_JOB=null;optBusy(false);optEl('optStatus').textContent=e.name==='AbortError'?'探索を中止しました。':'探索できませんでした：'+e.message}
+}
+function applyOptCandidate(index){
+  refreshOptValidity();const r=OPT_RESULT;if(!r||r.stale||!r.top[index])return;
+  const spec=r.top[index].spec;
+  OPT_PRODUCT_KEYS.forEach(key=>{if(Object.hasOwn(S,key))S[key]=spec[key];else setVal(key,spec[key])});
+  syncSegs();syncVals();render();
+  optEl('optResults').querySelectorAll('[data-opt-apply]').forEach(b=>b.disabled=true);r.stale=true;
+  optEl('optStatus').textContent=`候補${index+1}の商品仕様を反映しました。外部条件は維持しています。再比較は探索を再実行してください。`;toast('商品仕様に候補'+(index+1)+'を反映しました');
+}
+initOptRanges();syncOptInputs();
+optEl('optSettings').addEventListener('input',optSettingsChanged);
+optEl('optRanges').addEventListener('input',optSettingsChanged);
+optEl('runOptimizer').addEventListener('click',runOptimizer);
+optEl('cancelOptimizer').addEventListener('click',()=>stopOpt('探索を中止しました。結果は反映していません。'));
+optEl('resetOptRanges').addEventListener('click',()=>{initOptRanges();optSettingsChanged();if(!OPT_RESULT)optEl('optStatus').textContent='探索範囲を初期値に戻しました。'});
+optEl('optResults').addEventListener('click',e=>{const b=e.target.closest('[data-opt-apply]');if(b)applyOptCandidate(+b.dataset.optApply)});
+optEl('openOptimizer').addEventListener('click',()=>showTab('out','optimize'));
 
 // ===== Tabs (インプット / アウトプット / 仕様書 → 見出し) =====
 const TOPS=[['in','インプット'],['out','アウトプット'],['spec','仕様書']];

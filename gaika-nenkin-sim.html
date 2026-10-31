@@ -1321,7 +1321,7 @@ function openInfo(kind,anchor='',push=true){
  const root=mountInfo(kind);
  if(anchor){const reset=root.getElementById({guide:'clearSearch',glossary:'clearTerms',research:'resetFilters'}[kind]);reset?.click()}
  if(push){try{history.replaceState(null,'','#'+kind+(anchor?'/'+encodeURIComponent(anchor):''))}catch(e){}}
- const target=root.getElementById(anchor||'top');
+ const target=anchor?root.getElementById(anchor):null;
  if(target){for(let el=target;el;el=el.parentElement)if(el.tagName==='DETAILS')el.open=true;requestAnimationFrame(()=>target.scrollIntoView({block:'start'}))}
 }
 function routeInfoLink(event,a){

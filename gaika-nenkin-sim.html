@@ -41,7 +41,10 @@ header .sub{color:var(--muted);font-size:.85rem}
 .panes>.panel.active{display:block}
 .panes>.panel.input{max-width:720px}
 nav.top{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:8px;max-width:1180px;margin-inline:auto}
-nav.top button{font:inherit;font-size:.95rem;font-weight:700;padding:10px 18px;border:0;border-bottom:3px solid transparent;background:none;color:var(--muted);cursor:pointer}
+nav.top button,nav.top a{font:inherit;font-size:.95rem;font-weight:700;padding:10px 18px;border:0;border-bottom:3px solid transparent;background:none;color:var(--muted);cursor:pointer}
+nav.top a{text-decoration:none;white-space:nowrap}
+nav.top a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+@media(max-width:600px){nav.top button,nav.top a{font-size:.8rem;padding:10px 8px;white-space:nowrap}}
 nav.top button[aria-selected=true]{color:var(--fg);border-bottom-color:var(--accent)}
 nav.sub{display:flex;flex-wrap:wrap;gap:6px;margin:0 auto 14px;max-width:1180px}
 nav.sub button{font:inherit;font-size:.8rem;padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--fg);cursor:pointer}
@@ -197,7 +200,6 @@ html.param-help-open{overflow:hidden}
     <button class="btn" id="saveScen">シナリオ保存</button>
     <button class="btn" id="openOptimizer">商品スペック提案</button>
     <a class="btn" href="guide.html" target="_blank" rel="noopener">使い方</a>
-    <a class="btn" href="glossary.html" target="_blank" rel="noopener">用語集</a>
     <a class="btn" href="competitor-research.html" target="_blank" rel="noopener">競合他社情報</a>
     <button class="btn primary" id="runMC">モンテカルロ実行</button>
   </div>
@@ -1128,7 +1130,7 @@ function showTab(top,sub,push=true){
   if(!inTop.some(pn=>pn.dataset.sub===sub))sub=inTop[0].dataset.sub;
   TAB.top=top;TAB.sub=sub;
   panels.forEach(pn=>pn.classList.toggle('active',pn.dataset.sub===sub));
-  document.getElementById('topnav').innerHTML=TOPS.map(([k,l])=>`<button role="tab" aria-selected="${k===top}" data-top="${k}">${l}</button>`).join('');
+  document.getElementById('topnav').innerHTML=TOPS.map(([k,l])=>`<button role="tab" aria-selected="${k===top}" data-top="${k}">${l}</button>`).join('')+'<a href="glossary.html" target="_blank" rel="noopener" title="別タブで用語集を開く">用語集</a>';
   document.getElementById('subnav').innerHTML=inTop.map(pn=>`<button role="tab" aria-selected="${pn.dataset.sub===sub}" data-sub="${pn.dataset.sub}">${pn.dataset.title}</button>`).join('');
   const i=inTop.findIndex(pn=>pn.dataset.sub===sub);const prev=inTop[i-1],next=inTop[i+1];
   const nav=document.getElementById('panenav');nav.className='pane-nav'+(top==='in'?' input-width':'');

@@ -164,6 +164,27 @@ textarea{width:100%;font:inherit;font-family:var(--mono);font-size:.74rem;paddin
 html.param-help-open{overflow:hidden}
 @media(max-width:600px){.param-help-header{padding:12px 14px;gap:10px}.param-help-body{padding:14px}.param-help-footer{padding:12px 14px}.param-help-header h2{font-size:.92rem}.param-help-icon{width:18px;height:18px}}
 </style>
+
+<style id="history-readability-style">
+.hist-estimates{margin-top:20px;max-width:760px;min-width:0;line-height:1.75}
+.hist-estimates section{border-top:1px solid var(--line);padding-top:18px;margin-top:18px}
+.hist-estimates h3{font-size:.92rem;font-weight:700;color:var(--fg);letter-spacing:0;text-transform:none;margin-bottom:8px}
+.hist-estimates p{font-size:.8rem;color:var(--muted);margin:6px 0 12px;overflow-wrap:anywhere}
+.hist-estimates .hist-fit{font-variant-numeric:tabular-nums;color:var(--accent)}
+.hist-equation{max-width:100%;padding:14px 10px;margin:12px 0;border:1px solid var(--line);border-radius:5px;background:var(--bg);overflow-x:auto}
+.hist-equation math{font-family:"STIX Two Math","Cambria Math","Times New Roman",serif;font-size:1.12rem;margin:0}
+.hist-equation:focus-visible,.hist-estimates summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hist-estimates table{table-layout:fixed;width:100%;font-size:.82rem;margin:8px 0 12px}
+.hist-estimates th,.hist-estimates td{white-space:normal;overflow-wrap:anywhere;text-align:left;padding:9px 8px;vertical-align:top}
+.hist-estimates th:last-child,.hist-estimates td:last-child{width:100px;text-align:right;white-space:nowrap;overflow-wrap:normal;font-variant-numeric:tabular-nums}
+.hist-estimates td:last-child{font-family:var(--mono);color:var(--fg)}
+.hist-estimates summary{font-size:.82rem;color:var(--accent);cursor:pointer;padding:8px 0}
+.hist-symbols{margin:8px 0;font-size:.8rem}
+.hist-symbols dt{font-family:"Cambria Math","Times New Roman",serif;font-size:1rem;color:var(--fg);margin-top:10px}
+.hist-symbols dd{margin:2px 0 0;color:var(--muted);overflow-wrap:anywhere}
+.hist-table-hint{display:none}
+@media(max-width:600px){.hist-equation math{font-size:1.05rem}.hist-estimates th,.hist-estimates td{padding:9px 5px}.hist-estimates th:last-child,.hist-estimates td:last-child{width:90px}.hist-table-hint{display:block;margin:7px 0;font-size:.73rem;color:var(--muted)}}
+</style>
 </head>
 <body>
 <header>
@@ -350,7 +371,9 @@ html.param-help-open{overflow:hidden}
       <div class="chartbox"><canvas id="cHist"></canvas></div>
       <div class="legend"><span><i style="background:var(--s1)"></i>米10年</span><span><i style="background:var(--s2)"></i>豪10年</span><span><i style="background:var(--s3)"></i>日10年</span><span><i style="background:var(--s4)"></i>USD/JPY（右軸）</span></div>
       <div class="chartbox" style="margin-top:10px;height:220px"><canvas id="cFit"></canvas></div>
-      <div class="tablewrap" style="margin-top:10px"><table id="tHist"></table></div>
+      <div class="tablewrap" style="margin-top:10px" tabindex="0" role="region" aria-label="年度別の市場実績（横スクロール可）"><table id="tHist"></table></div>
+      <p class="hist-table-hint">年度表は横にスクロールして、為替や備考も確認できます。</p>
+      <div class="hist-estimates" id="histEstimates"></div>
       <div class="row" style="margin-top:10px">
         <label class="btn" for="csvIn">金利・為替CSVを読み込む</label>
         <input type="file" id="csvIn" accept=".csv,text/csv" hidden>
@@ -875,8 +898,65 @@ function renderHist(){
     options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,title:{display:true,text:'億円'}}},plugins:{legend:{position:'bottom'}}}});
   const [a,b,c,d16,dreg]=REG.coef;
   document.getElementById('tHist').innerHTML='<tr><th>年度</th><th>新契約ANP (億円)</th><th>件数 (万件)</th><th>米10年 年度平均</th><th>USD/JPY 年度平均</th><th>前年度比</th><th>備考</th></tr>'+
-    IND.map(d=>{const fx=fyAvg(HIST.usdjpy,d.fy),fx0=fyAvg(HIST.usdjpy,d.fy-1);return `<tr><td>${d.fy}年度</td><td class="num">${d.anp.toLocaleString('ja-JP')}</td><td class="num">${d.cnt}</td><td class="num">${fyAvg(HIST.us10,d.fy).toFixed(2)}</td><td class="num">${fx.toFixed(1)}</td><td class="num">${((fx/fx0-1)*100).toFixed(1)}%</td><td>${d.note||''}</td></tr>`}).join('')+
-    `<tr><td colspan="7" class="note" style="text-align:left;white-space:normal">回帰 ln(ANP) = ${a.toFixed(2)} + ${b.toFixed(3)}·米10年 + ${c.toFixed(2)}·ΔlnFX + ${d16.toFixed(2)}·D2016 + ${dreg.toFixed(2)}·D規制 （R²=${REG.r2.toFixed(2)}、${REG.n}観測）。米10年+1ptで市場 ×${Math.exp(b).toFixed(2)}、円安+10%で ×${Math.exp(c*0.1).toFixed(2)}、規制で ×${Math.exp(dreg).toFixed(2)}。<br>年次変化の推定（${DYN.n}観測）: σ 米${DYN.sig[0].toFixed(2)} 豪${DYN.sig[1].toFixed(2)} 日${DYN.sig[2].toFixed(2)}pt, 為替${(DYN.sig[3]*100).toFixed(1)}%／相関 米-豪 ${DYN.corr[0][1].toFixed(2)}, 米-日 ${DYN.corr[0][2].toFixed(2)}, 豪-日 ${DYN.corr[1][2].toFixed(2)}, 米-為替 ${DYN.corr[0][3].toFixed(2)}, 豪-為替 ${DYN.corr[1][3].toFixed(2)}, 日-為替 ${DYN.corr[2][3].toFixed(2)}／直近5年平均 米${DYN.mean[0].toFixed(2)} 豪${DYN.mean[1].toFixed(2)} 日${DYN.mean[2].toFixed(2)}。</td></tr>`;
+    IND.map(d=>{const fx=fyAvg(HIST.usdjpy,d.fy),fx0=fyAvg(HIST.usdjpy,d.fy-1);return `<tr><td>${d.fy}年度</td><td class="num">${d.anp.toLocaleString('ja-JP')}</td><td class="num">${d.cnt}</td><td class="num">${fyAvg(HIST.us10,d.fy).toFixed(2)}</td><td class="num">${fx.toFixed(1)}</td><td class="num">${((fx/fx0-1)*100).toFixed(1)}%</td><td>${d.note||''}</td></tr>`}).join('');
+
+  // Keep the mathematical explanation outside the horizontally scrolling annual table.
+  const signed=(value,digits,symbol)=>`<mo>${value<0?'−':'+'}</mo><mn>${Math.abs(value).toFixed(digits)}</mn>${symbol}`;
+  const rUS='<msubsup><mi>r</mi><mi>t</mi><mtext>US</mtext></msubsup>';
+  const fxChange='<mi>Δ</mi><mo>ln</mo><msub><mi>X</mi><mi>t</mi></msub>';
+  const dummy2016='<msub><mi>D</mi><mrow><mn>2016</mn><mo>,</mo><mi>t</mi></mrow></msub>';
+  const dummyReg='<msub><mi>D</mi><mrow><mtext>reg</mtext><mo>,</mo><mi>t</mi></mrow></msub>';
+  const corrRows=[[0,1,'米国債・豪国債'],[0,2,'米国債・日本国債'],[1,2,'豪国債・日本国債'],[0,3,'米国債・USD/JPY'],[1,3,'豪国債・USD/JPY'],[2,3,'日本国債・USD/JPY']];
+  document.getElementById('histEstimates').innerHTML=`
+    <section aria-labelledby="histRegressionTitle">
+      <h3 id="histRegressionTitle">市場規模の回帰式</h3>
+      <p>年度ごとの個人年金新契約ANPを、金利・為替・年度要因で説明する推定式です。</p>
+      <p class="hist-fit">決定係数 R² = ${REG.r2.toFixed(2)}　／　${REG.n}年度の観測</p>
+      <div class="hist-equation" tabindex="0" role="region" aria-label="推定した個人年金市場の回帰式">
+        <math display="block"><mtable columnalign="right left" rowspacing="0.45em" columnspacing="0.4em">
+          <mtr><mtd><mrow><mo>ln</mo><msub><mover accent="true"><mi>A</mi><mo>^</mo></mover><mi>t</mi></msub></mrow></mtd><mtd><mrow><mo>=</mo><mn>${a.toFixed(2)}</mn>${signed(b,3,rUS)}</mrow></mtd></mtr>
+          <mtr><mtd></mtd><mtd><mrow>${signed(c,2,fxChange)}</mrow></mtd></mtr>
+          <mtr><mtd></mtd><mtd><mrow>${signed(d16,2,dummy2016)}</mrow></mtd></mtr>
+          <mtr><mtd></mtd><mtd><mrow>${signed(dreg,2,dummyReg)}</mrow></mtd></mtr>
+        </mtable></math>
+      </div>
+      <details><summary>記号の意味を見る</summary><dl class="hist-symbols">
+        <dt>Â<sub>t</sub></dt><dd>個人年金新契約ANPの回帰値。単位は億円、tは年度、lnは自然対数です。</dd>
+        <dt>r<sub>t</sub><sup>US</sup></dt><dd>米国債10年利回りの年度平均。%の数値を使います（例：5.0）。</dd>
+        <dt>Δ ln Xₜ</dt><dd>USD/JPYの年度平均を前年度の年度平均で割り、自然対数を取った為替変化です。</dd>
+        <dt>D<sub>2016,t</sub></dt><dd>2016年度だけ1、それ以外は0。駆込みの年度要因を表します。</dd>
+        <dt>D<sub>reg,t</sub></dt><dd>2024年度以降は1、それ以前は0。販売抑制の年度要因を表します。</dd>
+      </dl></details>
+      <h3 style="margin-top:18px">係数の読み方</h3>
+      <table aria-label="市場回帰の係数の読み方"><thead><tr><th scope="col">ほかの条件を固定して変える条件</th><th scope="col">市場規模</th></tr></thead><tbody>
+        <tr><th scope="row">米国債10年利回り ＋1pt</th><td>×${Math.exp(b).toFixed(2)}</td></tr>
+        <tr><th scope="row">為替の対数変化 ＋0.10<br><span class="note">約10.5%の円安に相当</span></th><td>×${Math.exp(c*0.1).toFixed(2)}</td></tr>
+        <tr><th scope="row">販売抑制の年度要因 0 → 1</th><td>×${Math.exp(dreg).toFixed(2)}</td></tr>
+      </tbody></table>
+      <p>係数の単独効果を示す比較です。実際の販売量を保証する値ではありません。</p>
+    </section>
+    <section aria-labelledby="histVolTitle">
+      <h3 id="histVolTitle">金利・為替の変動幅</h3>
+      <p>月次データから求めた12か月変化の標準偏差（σ）。${DYN.n}組の観測から推定しています。</p>
+      <table aria-label="12か月変化の標準偏差"><thead><tr><th scope="col">対象</th><th scope="col">標準偏差 σ</th></tr></thead><tbody>
+        ${['米国債10年','豪国債10年','日本国債10年'].map((label,i)=>`<tr><th scope="row">${label}</th><td>${DYN.sig[i].toFixed(2)} pt</td></tr>`).join('')}
+        <tr><th scope="row">USD/JPY（対数変化）</th><td>${(DYN.sig[3]*100).toFixed(1)} %</td></tr>
+      </tbody></table>
+      <p>金利は変化幅の単位pt（%ポイント）。為替の%表示は対数変化の標準偏差を100倍した値です。</p>
+      <details><summary>変動の相関を見る</summary>
+        <p>−1〜1の値です。1に近いほど同じ方向、−1に近いほど逆方向に動く傾向を表します。</p>
+        <table aria-label="金利・為替の12か月変化の相関"><thead><tr><th scope="col">組合せ</th><th scope="col">相関係数</th></tr></thead><tbody>
+          ${corrRows.map(([i,j,label])=>`<tr><th scope="row">${label}</th><td>${DYN.corr[i][j].toFixed(2)}</td></tr>`).join('')}
+        </tbody></table>
+      </details>
+      <details><summary>直近5年の平均金利を見る（参考）</summary>
+        <table aria-label="直近5年の平均金利"><thead><tr><th scope="col">対象</th><th scope="col">平均金利</th></tr></thead><tbody>
+          ${['米国債10年','豪国債10年','日本国債10年'].map((label,i)=>`<tr><th scope="row">${label}</th><td>${DYN.mean[i].toFixed(2)} %</td></tr>`).join('')}
+        </tbody></table>
+        <p>参考値です。モンテカルロの金利の回帰先は、この平均ではなく実行時の入力水準です。</p>
+      </details>
+      <p><a href="#spec-3" style="color:var(--accent)">市場モデルの数式・前提を見る ↗</a>　／　<a href="#spec-9" style="color:var(--accent)">モンテカルロの数式・前提を見る ↗</a></p>
+    </section>`;
 }
 
 // ===== CSV import =====

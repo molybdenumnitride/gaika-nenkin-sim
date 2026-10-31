@@ -103,6 +103,16 @@ textarea{width:100%;font:inherit;font-family:var(--mono);font-size:.74rem;paddin
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
 .legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.75rem;color:var(--muted);margin-top:6px}
 .legend i{display:inline-block;width:10px;height:10px;margin-right:4px;vertical-align:-1px}
+
+.spec h4{margin:24px 0 8px;font-size:.86rem;font-weight:700;color:var(--fg)}
+.spec math{font-family:"STIX Two Math","Cambria Math","Times New Roman",serif;font-size:1.08em}
+.actuarial-symbols{min-width:640px}
+.actuarial-equation{display:flex;align-items:center;gap:24px;overflow-x:auto;max-width:100%;box-sizing:border-box;padding:16px 14px;margin:10px 0;background:var(--bg);border:1px solid var(--line);border-radius:5px}
+.actuarial-equation math{flex:0 0 auto;margin:0;font-size:1.1rem}
+.actuarial-equation .equation-number{margin-left:auto;flex:0 0 auto;font:12px var(--mono);color:var(--muted)}
+.actuarial-equation:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.spec .actuarial-caption{margin-top:18px;color:var(--muted)}
+
 .spec h3{margin:4px 0 8px;color:var(--fg);text-transform:none;letter-spacing:.02em;font-size:.88rem;font-weight:700}
 .spec p,.spec li{font-size:.84rem;max-width:72ch}
 .spec pre{font-family:var(--mono);font-size:.78rem;line-height:1.6;background:var(--bg);border:1px solid var(--line);padding:10px 12px;overflow-x:auto;margin:6px 0;white-space:pre}
@@ -306,6 +316,7 @@ textarea{width:100%;font:inherit;font-family:var(--mono);font-size:.74rem;paddin
       <h2>不確実性（モンテカルロ 1,000経路・相関あり）</h2>
       <div class="note" id="mcNote" style="margin-bottom:6px">金利3系列と為替を相関付きで動かし、年度別ANPの分布（P10〜P90帯）を描きます。右上のボタンで実行。</div>
       <div class="chartbox"><canvas id="cMC"></canvas></div>
+      <p class="note"><a href="#spec-9">保険数理記法による計算式・前提を見る ↗</a>（仕様書 第9節）</p>
     </div>
 
     <div class="panel" data-top="out" data-sub="hist" data-title="実績データ">
@@ -396,11 +407,78 @@ cost<sub>cap</sub> = capRatio · hurdle · min(T,10) · π
       <p>現在設定から各入力を1段階動かし、3年目ANPの変化率を降順表示（上位12件）。</p>
 
       <h3>9. モンテカルロ（相関あり）</h3>
-      <pre>Δ = (Δr<sub>US</sub>, Δr<sub>AU</sub>, Δr<sub>JP</sub>, ln FX比) ~ N(μ, Σ)   年次、1,000経路×5年
-金利: r<sub>t+1</sub> = r<sub>t</sub> + 0.15·(r* − r<sub>t</sub>) + σ·ε,  r* = 直近5年の平均, σ = 12か月変化の標準偏差
-為替: ln(FX<sub>t+1</sub>/FX<sub>t</sub>) = g<sub>FX</sub>/100 + σ<sub>FX</sub>·ε
-相関 Σ: 月次データの12か月変化（重複あり）から推定（コレスキー分解）  <span class="pill cal">推定</span>
-推定値は実績表の下に表示。平均回帰速度0.15のみ <span class="pill assume">仮定</span></pre>
+      <p>販売量の経済シナリオ試算を、保険数理の確率モデルの記法で以下のように定義する。実確率測度 <math><mi>ℙ</mi></math> の下で、現在の入力条件を起点に年次の金利・為替シナリオを発生させ、各年度の新契約ANPの経験分布を求める。評価期間は5年、時間刻みは1年、シミュレーション数は1,000とする。</p>
+
+      <p class="note">画面幅に収まらない表・数式は、枠内を左右にスクロールして確認できます。</p>
+
+      <h4>9.1 記号・単位・評価の立場</h4>
+      <div class="tablewrap"><table class="spec-t actuarial-symbols"><thead><tr><th>記号</th><th>定義</th><th>実装との対応</th></tr></thead><tbody>
+        <tr><td><math><mrow><mi>ℙ</mi><mo>,</mo><msub><mi>ℱ</mi><mi>t</mi></msub></mrow></math></td><td>実確率測度、および時点tまでの経済状態・乱数から得られる情報。</td><td>過去の月次変動を基にするシナリオ。リスク中立測度による価格評価ではない。</td></tr>
+        <tr><td><math><mrow><mi>s</mi><mo>=</mo><mn>1</mn><mo>,</mo><mo>…</mo><mo>,</mo><mi>N</mi></mrow></math></td><td>シナリオ番号。N＝1,000。</td><td>独立な乱数系列から1,000経路を生成。</td></tr>
+        <tr><td><math><mrow><mi>t</mi><mo>=</mo><mn>0</mn><mo>,</mo><mo>…</mo><mo>,</mo><mn>5</mn><mo>;</mo><mi>Δt</mi><mo>=</mo><mn>1</mn></mrow></math></td><td>初期時点t＝0と、発売後第1〜第5年度。Δtの単位は年。</td><td>第t年度のラベルは「発売年度＋t−1」。年度ごとの経済状態は年次更新する。</td></tr>
+        <tr><td><math><msubsup><mi>r</mi><mrow><mi>i</mi><mo>,</mo><mi>t</mi></mrow><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup></math></td><td>シナリオs・時点tの国iの10年国債利回り。i∈{US, AU, JP}。</td><td>数式では小数表示（5%＝0.05）。画面・コードの金利%値を100で割ったもの。</td></tr>
+        <tr><td><math><msubsup><mi>S</mi><mi>t</mi><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup></math></td><td>USD/JPY。1米ドル当たりの円価格。</td><td>初期値は入力された為替水準。AUD/JPYは、収録データ末尾の1豪ドル当たり米ドルを掛けて換算。</td></tr>
+        <tr><td><math><mrow><msub><mi>g</mi><mtext>FX</mtext></msub><mo>,</mo><msub><mi>σ</mi><mtext>FX</mtext></msub></mrow></math></td><td>年率の対数為替ドリフト、および年次対数為替変化の標準偏差。</td><td>gは入力した円安トレンド%を100で割る。σは月次系列の12か月対数変化から推定。</td></tr>
+        <tr><td><math><mrow><msub><mi>θ</mi><mi>i</mi></msub><mo>,</mo><msub><mi>κ</mi><mi>i</mi></msub><mo>,</mo><msub><mi>σ</mi><mi>i</mi></msub></mrow></math></td><td>金利の平均回帰水準、年当たりの平均回帰係数、年次金利変化の標準偏差。</td><td>θは直近最大60か月平均、κ＝0.15は仮定、σは12か月変化から推定。σも小数金利の単位。</td></tr>
+        <tr><td><math><mrow><msubsup><mi>A</mi><mi>t</mi><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup><mo>,</mo><msub><mi>π</mi><mn>0</mn></msub></mrow></math></td><td>シナリオsの第t年度新契約ANP（億円）、および固定した商品・販売・収益等の前提一式。</td><td>ANPは新規開拓と循環販売の合計。商品仕様・競合・効用ウェイト等はシナリオ間で固定。</td></tr>
+      </tbody></table></div>
+
+      <h4>9.2 相関付き正規乱数</h4>
+      <p>各シナリオ・各年度に4変量の独立標準正規乱数を発生させ、推定相関行列のコレスキー因子により相関を付与する。成分の順序は米金利、豪金利、日金利、為替とする。</p>
+      <div class="actuarial-equation" tabindex="0" role="region" aria-label="相関付き標準正規乱数の算式"><math display="block">
+        <mrow><msubsup><mi mathvariant="bold">Z</mi><mi>t</mi><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup><mover><mo>∼</mo><mtext>i.i.d.</mtext></mover><msub><mi>𝒩</mi><mn>4</mn></msub><mo>(</mo><mi mathvariant="bold">0</mi><mo>,</mo><msub><mi mathvariant="bold">I</mi><mn>4</mn></msub><mo>)</mo><mo>,</mo><mspace width="1em"/><msubsup><mi mathvariant="bold">ε</mi><mi>t</mi><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup><mo>=</mo><mi>L</mi><msubsup><mi mathvariant="bold">Z</mi><mi>t</mi><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup><mo>,</mo><mspace width="1em"/><mi>L</mi><msup><mi>L</mi><mi mathvariant="normal">⊤</mi></msup><mo>=</mo><mover><mi>R</mi><mo>^</mo></mover></mrow>
+      </math><span class="equation-number">(9.1)</span></div>
+      <p>したがって、推定パラメータを固定した条件下で <math><mrow><msubsup><mi mathvariant="bold">ε</mi><mi>t</mi><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup><mo>∼</mo><msub><mi>𝒩</mi><mn>4</mn></msub><mo>(</mo><mi mathvariant="bold">0</mi><mo>,</mo><mover><mi>R</mi><mo>^</mo></mover><mo>)</mo></mrow></math> となる。金利と為替の変動は同年度内で相関し、標準化した乱数は異なる年度・シナリオ間で独立と仮定する。実装の正規乱数はBox–Muller法による。コレスキー計算の対角要素には数値安定化の小さな正の下限を置く。</p>
+
+      <h4>9.3 金利過程：下限付き離散時間平均回帰モデル</h4>
+      <div class="actuarial-equation" tabindex="0" role="region" aria-label="金利の年次推移式"><math display="block">
+        <mrow><msubsup><mi>r</mi><mrow><mi>i</mi><mo>,</mo><mi>t</mi></mrow><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup><mo>=</mo><mo>max</mo><mo>{</mo><msub><mi>ℓ</mi><mi>i</mi></msub><mo>,</mo><msubsup><mi>r</mi><mrow><mi>i</mi><mo>,</mo><mi>t</mi><mo>−</mo><mn>1</mn></mrow><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup><mo>+</mo><msub><mi>κ</mi><mi>i</mi></msub><mo>(</mo><msub><mi>θ</mi><mi>i</mi></msub><mo>−</mo><msubsup><mi>r</mi><mrow><mi>i</mi><mo>,</mo><mi>t</mi><mo>−</mo><mn>1</mn></mrow><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup><mo>)</mo><mi>Δt</mi><mo>+</mo><msub><mi>σ</mi><mi>i</mi></msub><msqrt><mi>Δt</mi></msqrt><msubsup><mi>ε</mi><mrow><mi>i</mi><mo>,</mo><mi>t</mi></mrow><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup><mo>}</mo></mrow>
+      </math><span class="equation-number">(9.2)</span></div>
+      <p>平均回帰係数は全通貨で <math><mrow><msub><mi>κ</mi><mi>i</mi></msub><mo>=</mo><mn>0.15</mn></mrow></math>。金利下限はUS・AUで <math><mn>0.003</mn></math>（0.3%）、JPで <math><mo>−</mo><mn>0.003</mn></math>（−0.3%）とする。これは下限を適用した年次の離散式であり、連続時間モデルの厳密遷移分布を使用する実装ではない。</p>
+
+      <h4>9.4 為替過程：年次対数正規モデル</h4>
+      <div class="actuarial-equation" tabindex="0" role="region" aria-label="為替の年次推移式"><math display="block">
+        <mrow><msubsup><mi>S</mi><mi>t</mi><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup><mo>=</mo><msubsup><mi>S</mi><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup><mo>exp</mo><mo>{</mo><msub><mi>g</mi><mtext>FX</mtext></msub><mi>Δt</mi><mo>+</mo><msub><mi>σ</mi><mtext>FX</mtext></msub><msqrt><mi>Δt</mi></msqrt><msubsup><mi>ε</mi><mrow><mtext>FX</mtext><mo>,</mo><mi>t</mi></mrow><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup><mo>}</mo></mrow>
+      </math><span class="equation-number">(9.3)</span></div>
+      <p>本実装の入力ドリフトは、算術期待騰落率ではなく<strong>対数為替のドリフト</strong>である。したがって、その条件付き期待成長倍率は次のようになる。入力した円安トレンドから半分の分散を差し引く補正は実装していない。</p>
+      <div class="actuarial-equation" tabindex="0" role="region" aria-label="為替の条件付き期待成長倍率"><math display="block">
+        <mrow><msup><mi>𝔼</mi><mi>ℙ</mi></msup><mo>[</mo><mfrac><msub><mi>S</mi><mi>t</mi></msub><msub><mi>S</mi><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub></mfrac><mo>|</mo><msub><mi>ℱ</mi><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub><mo>]</mo><mo>=</mo><mo>exp</mo><mo>{</mo><mo>(</mo><msub><mi>g</mi><mtext>FX</mtext></msub><mo>+</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><msubsup><mi>σ</mi><mtext>FX</mtext><mn>2</mn></msubsup><mo>)</mo><mi>Δt</mi><mo>}</mo></mrow>
+      </math><span class="equation-number">(9.4)</span></div>
+
+      <h4>9.5 パラメータの標本推定</h4>
+      <p>月次観測数をMとし、各月の金利を小数表示に直した上で、m＝13,…,Mの12か月変化を用いる。観測窓は重複する。ここでの年次ボラティリティは12か月変化の標本標準偏差であり、月次標準偏差を単に√12倍したものではない。</p>
+      <div class="actuarial-equation" tabindex="0" role="region" aria-label="12か月変化ベクトルの定義"><math display="block">
+        <mrow><msub><mi mathvariant="bold">Y</mi><mi>m</mi></msub><mo>=</mo><msup><mrow><mo>(</mo><msub><mi>r</mi><mrow><mtext>US</mtext><mo>,</mo><mi>m</mi></mrow></msub><mo>−</mo><msub><mi>r</mi><mrow><mtext>US</mtext><mo>,</mo><mi>m</mi><mo>−</mo><mn>12</mn></mrow></msub><mo>,</mo><msub><mi>r</mi><mrow><mtext>AU</mtext><mo>,</mo><mi>m</mi></mrow></msub><mo>−</mo><msub><mi>r</mi><mrow><mtext>AU</mtext><mo>,</mo><mi>m</mi><mo>−</mo><mn>12</mn></mrow></msub><mo>,</mo><msub><mi>r</mi><mrow><mtext>JP</mtext><mo>,</mo><mi>m</mi></mrow></msub><mo>−</mo><msub><mi>r</mi><mrow><mtext>JP</mtext><mo>,</mo><mi>m</mi><mo>−</mo><mn>12</mn></mrow></msub><mo>,</mo><mo>log</mo><mfrac><msub><mi>S</mi><mi>m</mi></msub><msub><mi>S</mi><mrow><mi>m</mi><mo>−</mo><mn>12</mn></mrow></msub></mfrac><mo>)</mo></mrow><mi mathvariant="normal">⊤</mi></msup></mrow>
+      </math><span class="equation-number">(9.5)</span></div>
+      <div class="actuarial-equation" tabindex="0" role="region" aria-label="標本平均と標本共分散の算式"><math display="block">
+        <mrow><mi>n</mi><mo>=</mo><mi>M</mi><mo>−</mo><mn>12</mn><mo>,</mo><mspace width="1em"/><mover><mi mathvariant="bold">Y</mi><mo>¯</mo></mover><mo>=</mo><mfrac><mn>1</mn><mi>n</mi></mfrac><munderover><mo>∑</mo><mrow><mi>m</mi><mo>=</mo><mn>13</mn></mrow><mi>M</mi></munderover><msub><mi mathvariant="bold">Y</mi><mi>m</mi></msub><mo>,</mo><mspace width="1em"/><mover><mi>C</mi><mo>^</mo></mover><mo>=</mo><mfrac><mn>1</mn><mrow><mi>n</mi><mo>−</mo><mn>1</mn></mrow></mfrac><munderover><mo>∑</mo><mrow><mi>m</mi><mo>=</mo><mn>13</mn></mrow><mi>M</mi></munderover><mo>(</mo><msub><mi mathvariant="bold">Y</mi><mi>m</mi></msub><mo>−</mo><mover><mi mathvariant="bold">Y</mi><mo>¯</mo></mover><mo>)</mo><msup><mrow><mo>(</mo><msub><mi mathvariant="bold">Y</mi><mi>m</mi></msub><mo>−</mo><mover><mi mathvariant="bold">Y</mi><mo>¯</mo></mover><mo>)</mo></mrow><mi mathvariant="normal">⊤</mi></msup></mrow>
+      </math><span class="equation-number">(9.6)</span></div>
+      <div class="actuarial-equation" tabindex="0" role="region" aria-label="標準偏差と相関係数の推定式"><math display="block">
+        <mrow><msub><mi>σ</mi><mi>a</mi></msub><mo>=</mo><msqrt><msub><mover><mi>C</mi><mo>^</mo></mover><mi>aa</mi></msub></msqrt><mo>,</mo><mspace width="1em"/><msub><mover><mi>R</mi><mo>^</mo></mover><mi>ab</mi></msub><mo>=</mo><mfrac><msub><mover><mi>C</mi><mo>^</mo></mover><mi>ab</mi></msub><mrow><msub><mi>σ</mi><mi>a</mi></msub><msub><mi>σ</mi><mi>b</mi></msub></mrow></mfrac><mspace width="1em"/><mo>(</mo><mi>a</mi><mo>,</mo><mi>b</mi><mo>∈</mo><mo>{</mo><mtext>US, AU, JP, FX</mtext><mo>}</mo><mo>)</mo></mrow>
+      </math><span class="equation-number">(9.7)</span></div>
+      <p>金利の平均回帰水準は、q＝min(60,M)として <math><mrow><msub><mi>θ</mi><mi>i</mi></msub><mo>=</mo><mfrac><mn>1</mn><mi>q</mi></mfrac><munderover><mo>∑</mo><mrow><mi>m</mi><mo>=</mo><mi>M</mi><mo>−</mo><mi>q</mi><mo>+</mo><mn>1</mn></mrow><mi>M</mi></munderover><msub><mi>r</mi><mrow><mi>i</mi><mo>,</mo><mi>m</mi></mrow></msub></mrow></math> とする。標本平均の12か月変化をシナリオのドリフトに直接採用することはなく、金利には平均回帰項、為替には入力ドリフトを使う。推定値は「実績データ」に表示する。月次データが36点未満の場合は再推定せず、それまでの設定を保持する。</p>
+
+      <h4>9.6 経済シナリオから新契約ANPへの写像</h4>
+      <p>固定した前提をπ₀とし、既存の5年間売上モデルを <math><mi>ℳ</mi></math> と書く。各年度の経済状態と、当年度の算術為替騰落率をモデルに渡し、その出力の第t年度成分を取り出す。</p>
+      <div class="actuarial-equation" tabindex="0" role="region" aria-label="当年度の算術為替騰落率"><math display="block">
+        <mrow><msubsup><mi>h</mi><mi>t</mi><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup><mo>=</mo><mfrac><msubsup><mi>S</mi><mi>t</mi><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup><msubsup><mi>S</mi><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup></mfrac><mo>−</mo><mn>1</mn></mrow>
+      </math><span class="equation-number">(9.8)</span></div>
+      <div class="actuarial-equation" tabindex="0" role="region" aria-label="新契約ANPへの写像"><math display="block">
+        <mrow><msubsup><mi>A</mi><mi>t</mi><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup><mo>=</mo><msub><mrow><mo>[</mo><mi>ℳ</mi><mo>(</mo><msub><mi>π</mi><mn>0</mn></msub><mo>;</mo><msubsup><mi>r</mi><mrow><mtext>US</mtext><mo>,</mo><mi>t</mi></mrow><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup><mo>,</mo><msubsup><mi>r</mi><mrow><mtext>AU</mtext><mo>,</mo><mi>t</mi></mrow><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup><mo>,</mo><msubsup><mi>r</mi><mrow><mtext>JP</mtext><mo>,</mo><mi>t</mi></mrow><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup><mo>,</mo><msubsup><mi>S</mi><mi>t</mi><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup><mo>,</mo><msubsup><mi>h</mi><mi>t</mi><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup><mo>)</mo><mo>]</mo></mrow><mi>t</mi></msub></mrow>
+      </math><span class="equation-number">(9.9)</span></div>
+      <p>実装へ渡す金利・為替トレンドの%値は、それぞれ100rと100hに戻す。為替の発生式で使う<strong>対数ドリフトg</strong>と、売上モデルに渡す<strong>実現した算術変化h</strong>を区別する。</p>
+      <p>現行実装は、各時点の経済状態を5年間売上モデル全体に当てはめ、第t年度のANPを抜き出す近似である。売上モデル内の保有残高はその都度初期保有から再計算するため、経路に沿って前年度の保有残高を引き継ぐ厳密な資産負債プロジェクションではない。</p>
+
+      <h4>9.7 経験分布・順序統計量による分位点</h4>
+      <div class="actuarial-equation" tabindex="0" role="region" aria-label="年度別ANPの経験分布関数"><math display="block">
+        <mrow><msub><mover><mi>F</mi><mo>^</mo></mover><mi>t</mi></msub><mo>(</mo><mi>a</mi><mo>)</mo><mo>=</mo><mfrac><mn>1</mn><mi>N</mi></mfrac><munderover><mo>∑</mo><mrow><mi>s</mi><mo>=</mo><mn>1</mn></mrow><mi>N</mi></munderover><msub><mn mathvariant="bold">1</mn><mrow><mo>{</mo><msubsup><mi>A</mi><mi>t</mi><mrow><mo>(</mo><mi>s</mi><mo>)</mo></mrow></msubsup><mo>≤</mo><mi>a</mi><mo>}</mo></mrow></msub></mrow>
+      </math><span class="equation-number">(9.10)</span></div>
+      <p>各年度のANP標本を小さい順に <math><mrow><msub><mi>A</mi><mrow><mo>(</mo><mn>1</mn><mo>)</mo><mo>,</mo><mi>t</mi></mrow></msub><mo>≤</mo><mo>…</mo><mo>≤</mo><msub><mi>A</mi><mrow><mo>(</mo><mi>N</mi><mo>)</mo><mo>,</mo><mi>t</mi></mrow></msub></mrow></math> と並べる。画面の分位点は、実装に一致する次の補間なしの順序統計量で定義する。</p>
+      <div class="actuarial-equation" tabindex="0" role="region" aria-label="画面表示する経験分位点の定義"><math display="block">
+        <mrow><msub><mover><mi>Q</mi><mo>^</mo></mover><mrow><mi>α</mi><mo>,</mo><mi>t</mi></mrow></msub><mo>=</mo><msub><mi>A</mi><mrow><mo>(</mo><msub><mi>k</mi><mi>α</mi></msub><mo>)</mo><mo>,</mo><mi>t</mi></mrow></msub><mo>,</mo><mspace width="1em"/><msub><mi>k</mi><mi>α</mi></msub><mo>=</mo><mn>1</mn><mo>+</mo><mo>⌊</mo><mi>α</mi><mo>(</mo><mi>N</mi><mo>−</mo><mn>1</mn><mo>)</mo><mo>⌋</mo><mo>,</mo><mspace width="1em"/><mi>α</mi><mo>∈</mo><mo>{</mo><mn>0.10</mn><mo>,</mo><mn>0.50</mn><mo>,</mo><mn>0.90</mn><mo>}</mo></mrow>
+      </math><span class="equation-number">(9.11)</span></div>
+      <p>N＝1,000のとき、P10・中央値・P90は、それぞれ100番目・500番目・900番目の標本値である。帯は年度ごとのP10〜P90であり、5年間の経路全体を一定確率で覆う同時区間でも、実績値に対する信頼区間でもない。決定論の線は、現在の入力条件で経済状態を固定した元の売上モデルの値を表す。</p>
+      <p class="actuarial-caption">この記載は現行コードの数理的な表現であり、計算処理の変更を伴わない。死亡・生存確率、責任準備金、割引現価、リスク中立評価を追加したものではなく、パラメータ推定誤差・競合改定・ウェイト変動も経路ごとには発生させない。</p>
 
       <h3>10. データ</h3>
       <div class="tablewrap"><table class="spec-t">

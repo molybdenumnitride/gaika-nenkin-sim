@@ -40,12 +40,18 @@ header .sub{color:var(--muted);font-size:.85rem}
 .panes>.panel{display:none}
 .panes>.panel.active{display:block}
 .panes>.panel.input{max-width:720px}
-nav.top{display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid var(--line);margin-bottom:8px;max-width:1180px;margin-inline:auto}
-nav.top button,nav.top a{font:inherit;font-size:.95rem;font-weight:700;padding:10px 18px;border:0;border-bottom:3px solid transparent;background:none;color:var(--muted);cursor:pointer}
-nav.top a{text-decoration:none;white-space:nowrap}
-nav.top a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-@media(max-width:600px){nav.top button,nav.top a{font-size:.8rem;padding:10px 8px;white-space:nowrap}}
+header .scenario-actions{display:flex;align-items:stretch;gap:8px;max-width:100%}
+.scenario-actions .namebox{min-width:0;flex:1 1 11em}
+.scenario-actions .btn{flex:0 0 auto;white-space:nowrap}
+nav.top{display:flex;flex-wrap:wrap;gap:0 28px;border-bottom:1px solid var(--line);margin-bottom:12px;max-width:1180px;margin-inline:auto;padding-bottom:6px}
+.top-group{display:flex;align-items:flex-start;gap:12px;min-width:0}
+.top-group-label{flex:0 0 auto;padding-top:13px;color:var(--muted);font-size:.65rem;letter-spacing:.05em}
+.top-group-items{display:flex;flex-wrap:wrap;gap:0;min-width:0}
+nav.top button{font:inherit;font-size:.95rem;font-weight:700;padding:10px 12px;border:0;border-bottom:3px solid transparent;background:none;color:var(--muted);cursor:pointer;white-space:nowrap;min-height:44px}
+nav.top button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 nav.top button[aria-selected=true]{color:var(--fg);border-bottom-color:var(--accent)}
+@media(max-width:900px){nav.top{flex-direction:column;gap:4px}.top-group{display:grid;grid-template-columns:72px minmax(0,1fr);gap:8px}}
+@media(max-width:600px){header .scenario-actions{width:100%}.scenario-actions .namebox{width:auto}nav.top{gap:2px}.top-group{grid-template-columns:62px minmax(0,1fr);gap:4px}.top-group-label{font-size:.6rem;padding-top:14px}nav.top button{font-size:.8rem;padding:10px 8px}}
 nav.sub{display:flex;flex-wrap:wrap;gap:6px;margin:0 auto 14px;max-width:1180px}
 nav.sub button{font:inherit;font-size:.8rem;padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--fg);cursor:pointer}
 nav.sub button[aria-selected=true]{background:var(--accent);color:#fff;border-color:var(--accent)}
@@ -195,17 +201,14 @@ html.param-help-open{overflow:hidden}
     <h1>外貨建て個人年金 売上シミュレーター</h1>
     <div class="sub">新商品の仕様・外部環境・競合を変えて、年換算保険料（ANP）・件数・収益性の変化を見る — v0.4</div>
   </div>
-  <div class="row">
-    <input type="text" id="scenName" class="namebox" placeholder="シナリオ名">
+  <div class="scenario-actions" role="group" aria-label="シナリオの保存">
+    <input type="text" id="scenName" class="namebox" placeholder="シナリオ名" aria-label="シナリオ名">
     <button class="btn" id="saveScen">シナリオ保存</button>
-    <button class="btn" id="openOptimizer">商品スペック提案</button>
-    <a class="btn" href="#guide">使い方</a>
-    <a class="btn" href="#research">競合他社情報</a>
   </div>
 </header>
 <div class="kpi" id="kpi" role="region" aria-label="現在の試算結果"></div>
 <nav class="top" id="topnav" aria-label="主要タブ"></nav>
-<nav class="sub" id="subnav" aria-label="見出し"></nav>
+<nav class="sub" id="subnav" aria-label="選択中の画面の項目"></nav>
 
 <div class="panes">
     <div class="panel input" data-top="in" data-sub="env" data-title="外部環境">
@@ -1351,7 +1354,6 @@ optEl('runOptimizer').addEventListener('click',runOptimizer);
 optEl('cancelOptimizer').addEventListener('click',()=>stopOpt('探索を中止しました。結果は反映していません。'));
 optEl('resetOptRanges').addEventListener('click',()=>{initOptRanges();optSettingsChanged();if(!OPT_RESULT)optEl('optStatus').textContent='探索範囲を初期値に戻しました。'});
 optEl('optResults').addEventListener('click',e=>{const b=e.target.closest('[data-opt-apply]');if(b)applyOptCandidate(+b.dataset.optApply)});
-optEl('openOptimizer').addEventListener('click',()=>showTab('out','optimize'));
 
 // ===== In-app documentation: isolated content and local navigation =====
 const INFO_CONFIG={guide:'使い方',glossary:'用語集',research:'競合他社情報','ai-analysis':'AI活用による分析'};
@@ -1456,7 +1458,7 @@ function showTab(top,sub,push=true){
   if(!inTop.some(pn=>pn.dataset.sub===sub))sub=inTop[0].dataset.sub;
   TAB.top=top;TAB.sub=sub;
   panels.forEach(pn=>pn.classList.toggle('active',pn.dataset.sub===sub));
-  document.getElementById('topnav').innerHTML=TOPS.map(([k,l])=>`<button role="tab" aria-selected="${k===top}" data-top="${k}">${l}</button>`).join('');
+  document.getElementById('topnav').innerHTML=[['試算',TOPS.slice(0,2)],['資料・ヘルプ',TOPS.slice(2)]].map(([label,items])=>`<div class="top-group"><span class="top-group-label" aria-hidden="true">${label}</span><div class="top-group-items" role="tablist" aria-label="${label}">${items.map(([k,l])=>`<button role="tab" aria-selected="${k===top}" data-top="${k}">${l}</button>`).join('')}</div></div>`).join('');
   document.getElementById('subnav').innerHTML=inTop.map(pn=>`<button role="tab" aria-selected="${pn.dataset.sub===sub}" data-sub="${pn.dataset.sub}">${pn.dataset.title}</button>`).join('');
   const i=inTop.findIndex(pn=>pn.dataset.sub===sub);const prev=inTop[i-1],next=inTop[i+1];
   const nav=document.getElementById('panenav');nav.className='pane-nav'+(top==='in'?' input-width':'');

@@ -698,9 +698,9 @@ html.param-help-open{overflow:hidden}
 @media(max-width:900px){.ai-methods{grid-template-columns:1fr}}@media(max-width:600px){.ai-flow{grid-template-columns:1fr;gap:9px}.ai-flow li{padding:14px 16px}.ai-flow b{margin-top:4px}.ai-flow p{margin-top:4px}.ai-method{padding:20px 16px}.ai-roadmap>li{grid-template-columns:1fr;gap:8px}.ai-roadmap h3{font-size:17px}.ai-outcome{padding:18px 14px}.ai-outcome p{display:grid;grid-template-columns:1fr}.ai-headline{font-size:25px}.ai-method h3{font-size:18px}}
 </style><div class="reader-toolbar"><button class="button" type="button" data-reader-back>← 試算に戻る</button><span>AI活用による分析を表示しています。入力した値は保持されています。</span></div>
 <div class="layout" id="top">
-<aside class="toc"><h2>AI活用による分析</h2><nav aria-label="AI活用による分析の目次"><a href="#overview">分析の全体像</a><a href="#methods">6つの分析方法</a><a href="#data">必要なデータ</a><a href="#current">このアプリとの関係</a><a href="#roadmap">導入の順番</a><a href="#references">参考資料</a></nav></aside>
+<aside class="toc"><h2>AI活用による分析</h2><nav aria-label="AI活用による分析の目次"><a href="#overview">分析の全体像</a><a href="#methods">6つの分析方法</a><a href="#data">必要なデータ</a><a href="#implementation">導入に必要なもの</a><a href="#risks">リスクと対策</a><a href="#catboost">CatBoostとは</a><a href="#training-data">学習データはある？</a><a href="#current">このアプリとの関係</a><a href="#roadmap">導入の順番</a><a href="#references">参考資料</a></nav></aside>
 <main id="content">
-<section class="intro" id="overview"><div class="eyebrow">AI ANALYSIS · PRODUCT PLANNING</div><h1>AI活用による分析</h1><p class="ai-headline">選ばれる仕様を学び、<br>条件に合う商品案を探す。</p><p class="lead">外貨建て保険の商品企画に向けて、売上予測・選好分析・商品スペック決定へのAIの使い方を整理します。</p><p class="ai-label">分析手法と今後の拡張案の解説 ／ 2026年11月1日</p>
+<section class="intro" id="overview"><div class="eyebrow">AI ANALYSIS · PRODUCT PLANNING</div><h1>AI活用による分析</h1><p class="ai-headline">選ばれる仕様を学び、<br>条件に合う商品案を探す。</p><p class="lead">外貨建て保険の商品企画に向けて、売上予測・選好分析・商品スペック決定へのAIの使い方を整理します。</p><div class="callout"><p><strong>AI分析機能は未実装です。</strong><br>このページは分析方法と導入案の解説です。AI APIへの接続・AIによる回答生成・CatBoostの学習予測は実装していません。既存の回帰・効用ウェイト推定・モンテカルロ・仕様探索は利用できます。</p></div><p class="ai-label">分析手法と今後の拡張案の解説 ／ 2026年11月1日</p>
 <ol class="ai-flow" aria-label="商品企画の分析の流れ"><li><span>01 · LEARN</span><b>選ばれ方を学ぶ</b><p>顧客・販売担当者の選好を調査する</p></li><li><span>02 · FORECAST</span><b>販売量を予測する</b><p>仕様・市場・販路を実績につなぐ</p></li><li><span>03 · DESIGN</span><b>条件に合う案を選ぶ</b><p>販売量・収益・リスクを一緒に比較する</p></li></ol>
 <div class="callout"><p><strong>生成AIと数値モデルを組み合わせる。</strong><br>生成AIは資料整理・仮説づくり・説明を支援し、需要予測は実績や調査回答から学習したモデルで行います。商品案の収益・資本評価には保険数理モデルを接続します。</p></div></section>
 
@@ -726,13 +726,52 @@ html.param-help-open{overflow:hidden}
 <tr><th>採算・資本条件</th><td>運用・ヘッジ・保証費用、継続率、所要資本、社内基準</td><td>販売量の大きい候補を商品化できるか。</td></tr>
 </tbody></table></div><div class="callout"><p><strong>現在の市場回帰は年次9観測です。</strong><br>複雑なAIに置き換えるだけでは、商品仕様の効果を学ぶ根拠は増えません。競合14社の全社業績は比較資料として使い、商品単位の需要データとは区別します。まず仕様・販売機会・実績が結び付くデータを整えます。</p></div><p class="small">サンプル生成した回答は動作確認用です。実際の顧客・販売担当者の回答と区別し、実測データとして学習・検証に混ぜません。</p></section>
 
+<section class="chapter" id="implementation"><h2>AI分析を追加するには</h2><p class="section-lead">まずは、今の試算結果を読み取り、前提と比較候補を説明するAIから。</p><p>初版は、選択したシナリオの入力条件・計算結果・承認した仕様書の説明だけを生成AIに渡す構成を想定します。大量の学習データや独自モデルの開発は、この説明機能の前提ではありません。予測精度を高める開発は、実績データを使って別途検証します。</p>
+<ol class="ai-flow" aria-label="AI分析の接続構成"><li><span>01 · APP</span><b>試算・送信内容の確認</b><p>選択した条件と結果を確認して送信</p></li><li><span>02 · SERVER</span><b>認証付きの接続サーバー</b><p>利用者確認・秘密情報の保管・回数制限</p></li><li><span>03 · AI</span><b>分析をアプリ内に表示</b><p>結果の要約・前提への依存・次の比較候補</p></li></ol>
+<div class="tablewrap" tabindex="0" role="region" aria-label="AI分析の導入に必要なもの・横スクロール可"><table class="ai-data"><thead><tr><th>必要なもの</th><th>実装・準備する内容</th></tr></thead><tbody>
+<tr><th>AIサービスの契約</th><td>提供元・契約名義・API利用契約・予算を決定。料金はモデル・文章量・分析回数に依存します。</td></tr>
+<tr><th>接続サーバー</th><td>GitHub Pagesは静的配信のため、AI接続用の処理を別途用意します。APIキーはサーバーの秘密情報として保管し、公開HTMLに埋め込みません。</td></tr>
+<tr><th>アプリの分析画面</th><td>「AI分析」ボタン、送信内容の確認、処理中・失敗時の表示、根拠と分析結果を追加します。</td></tr>
+<tr><th>利用者・データのルール</th><td>利用者の範囲、外部に送ってよい項目、未公開仕様の扱い、提供元での保存・学習利用条件を確認します。</td></tr>
+<tr><th>品質・運用の確認</th><td>代表ケースで数値との整合性を確認。利用回数・入力長・出力長の制限、使用量監視、停止手段を設けます。</td></tr>
+</tbody></table></div>
+<div class="ai-outcome"><span>初版のAIが返す4項目</span><p><b>結果の要約</b><b>前提への依存</b><b>追加の比較候補</b><b>検証が必要な点</b></p><small>数値の計算は既存の計算機能が担当。商品条件の変更・採用は、利用者が内容を確認して選びます。</small></div>
+<p>公開シミュレーターは維持し、AI分析だけを当初は本人・招待者向けのログイン制にする構成を推奨します。事前に決めるのは、<strong>誰が使うか・何を送ってよいか・契約名義・予算</strong>です。</p><p class="small">この構成は導入案です。現時点ではAI API接続・認証付きサーバー・AIによる回答生成を実装していません。</p></section>
+
+<section class="chapter" id="risks"><h2>AI分析のリスクと対策</h2><div class="tablewrap" tabindex="0" role="region" aria-label="AI分析のリスクと対策・横スクロール可"><table class="ai-data"><thead><tr><th>リスク</th><th>想定する対策</th></tr></thead><tbody>
+<tr><th>社外への情報送信</th><td>顧客情報・社内実績・未公開商品仕様は機密性を確認。送信項目を限定し、個人情報を除外。提供元の保存・学習利用・ログの条件を確認します。</td></tr>
+<tr><th>誤った説明・数値</th><td>計算結果と根拠資料を渡し、推測と確認済みの事実を区別。AIの回答を計算結果・原資料と照合します。</td></tr>
+<tr><th>予測の過信</th><td>AIの説明が自然でも、元のモデルの妥当性が証明されたとは扱いません。基準ケース・感応度・下振れを併記します。</td></tr>
+<tr><th>資料からの不正な指示</th><td>競合資料などの文章を処理上の命令と分離し、利用できる資料・操作を限定。AIに商品設定の自動変更権限を与えません。</td></tr>
+<tr><th>公開機能の悪用・費用増</th><td>認証、利用者別の回数制限、入力・出力の長さ制限、タイムアウト、使用量監視と停止制御を設けます。</td></tr>
+<tr><th>再現性・説明責任</th><td>分析時の入力・計算結果・モデルと指示文の版・実行日時を、機密性と保存方針に応じて記録します。</td></tr>
+</tbody></table></div><p class="small">生成AIは検討の補助として位置付けます。正式な採算・資本評価と商品化判断には、担当者による検証と社内承認が必要です。<a href="#references">リスク管理の参考資料 →</a></p></section>
+
+<section class="chapter" id="catboost"><h2>CatBoostとは</h2><p class="section-lead">表形式の実績から、売上や成約確率を予測する機械学習。</p><p>CatBoost（キャットブースト）は、条件分岐を組み合わせる「決定木」を順番に学習し、予測誤差を修正する勾配ブースティングの手法です。金利・利率などの数値と、商品種類・通貨・販売チャネルなどの分類を一緒に扱えます。</p>
+<div class="ai-methods"><article class="ai-method"><h3>CatBoost</h3><p class="ai-method-goal">実績から販売量を予測する</p><p>商品条件・相場・販路を入力し、月間の払込保険料総額や新契約件数などを予測する用途を想定します。</p></article><article class="ai-method"><h3>生成AI</h3><p class="ai-method-goal">結果と前提を文章で説明する</p><p>試算の要約、根拠付きの資料整理、追加比較の提案などに使います。需要予測の学習とは役割が異なります。</p></article></div>
+<p>既存のシミュレーターは、設定した回帰・選択モデルと前提に基づいて計算します。CatBoostを追加する場合は、現在のモデルや単純な予測と、未使用の将来期間の実績で比較します。仕様候補の探索と組み合わせれば、モデル上で販売量の大きい候補を探せます。</p>
+<div class="callout"><p><strong>高い予測精度と、仕様変更の効果は別です。</strong><br>「利率が高い商品ほど売れた」という学習だけでは、利率を上げたときの販売増加を保証できません。販促・販売網・市場環境も確認し、未経験の相場や新しい仕様への予測は慎重に検証します。</p></div><p class="small">現在のアプリにCatBoostは導入していません。<a href="https://catboost.ai/docs/en/" target="_blank" rel="noopener">CatBoost公式ドキュメント ↗</a></p></section>
+
+<section class="chapter" id="training-data"><h2>CatBoostの学習データはある？</h2><p class="section-lead">練習用の公開データはあります。保険の売上予測には、目的に合った実績が必要です。</p><p>CatBoost自体は保険の販売実績を学習済みのAIではなく、用意したデータから予測モデルを作る道具です。公式にTitanicなどの練習用データはありますが、外貨建て保険の売上予測にそのまま使えるものではありません。</p>
+<div class="tablewrap" tabindex="0" role="region" aria-label="売上予測の学習データと入手方法・横スクロール可"><table class="ai-data"><thead><tr><th>データ</th><th>入手方法・現在の状況</th><th>使い道</th></tr></thead><tbody>
+<tr><th>業界統計</th><td>生命保険協会の月次・四半期・年次統計など</td><td>市場全体の契約動向。外貨建て・一時払・商品別などの集計範囲は原表で確認。</td></tr>
+<tr><th>金利・為替</th><td>公開の時系列データ</td><td>販売当時の市場環境を対応させる。</td></tr>
+<tr><th>競合商品の条件</th><td>本アプリの競合調査資料・各社の公表資料</td><td>相対的な商品条件を表現。現在のカタログだけでは過去の仕様履歴は不足。</td></tr>
+<tr><th>商品別・月別の販売実績</th><td>保険会社・販売会社の内部データが中心</td><td>商品仕様・販売体制と実際の販売量の関係を学習。</td></tr>
+<tr><th>公式の練習用データ</th><td>CatBoost公式のdatasets機能など</td><td>学習コードの練習・動作確認。保険売上予測の根拠にはしない。</td></tr>
+</tbody></table></div>
+<h3>欲しいデータの形</h3><p><strong>1行＝ある月 × ある商品 × ある販売チャネル</strong>を基本に、当時の通貨・積立利率・保障・費用、取扱拠点数・発売後月数・販売停止や上限、金利・為替・競合条件と、その月の払込保険料総額・新契約件数を結び付けます。顧客の氏名や連絡先は、この集計単位の予測には不要です。</p>
+<p>目的の「5年間の払込保険料総額」に合わせ、<strong>払込保険料とANPを分けて</strong>収集します。対象通貨、円換算方法、新契約・継続払込・乗換の扱いも統一します。5年間の予測には、将来の金利・為替・販売体制などのシナリオも必要です。</p>
+<div class="callout"><p><strong>競合の仕様だけでは、売れた理由を学習できません。</strong><br>現在の競合資料は入力の材料ですが、対応する商品別の販売実績が不足しています。年次9観測だけで複雑なモデルの精度を検証するのは難しく、公開統計で市場全体を試しつつ、匿名化した社内実績で商品単位の検証へ進む構成を想定します。</p></div>
+<p>十分なデータ量に一律の基準はありません。期間・商品・販路の幅、条件変更の回数、実績の品質を確認し、時系列で学習用と検証用を分けます。シミュレーターの架空データで学習しても元の計算式の再現にとどまり、実際の販売予測精度の証明にはなりません。</p><p class="small"><a href="https://catboost.ai/docs/en/concepts/python-reference_datasets" target="_blank" rel="noopener">CatBoost公式データセット ↗</a> ／ <a href="https://www.seiho.or.jp/data/statistics/summary/" target="_blank" rel="noopener">生命保険協会・生命保険事業概況 ↗</a></p></section>
+
 <section class="chapter" id="current"><h2>このアプリとの関係</h2><p>現在の回帰・選択モデル・モンテカルロ・仕様探索を土台に、実測データで係数や予測を校正する構成を想定しています。</p><div class="tablewrap" tabindex="0" role="region" aria-label="現在の機能とAI活用の拡張案・横スクロール可"><table class="ai-data"><thead><tr><th>現在の機能</th><th>AI活用の拡張案</th></tr></thead><tbody><tr><th>市場回帰・商品選択</th><td>商品・販路ごとの実績を学習し、予測と改定効果を検証する。</td></tr><tr><th>効用ウェイト推定</th><td>実際の選択回答を増やし、顧客層・販売担当者層の違いを推定する。</td></tr><tr><th>候補比較・最低粗利益率での絞り込み</th><td>正式な採算・資本評価と接続し、複数の目的と制約を扱う。</td></tr><tr><th>金利・為替のモンテカルロ</th><td>需要係数・競合の不確実性も加え、下振れに強い仕様を探索する。</td></tr><tr><th>競合の参照情報</th><td>生成AIで資料の抽出・差分確認・根拠確認を支援する。</td></tr></tbody></table></div><p class="small">上の右列は今後の設計案です。現在の簡易粗利益率は、正式なEV・新契約価値・規制上の所要資本評価とは区別します。</p></section>
 
 <section class="chapter" id="roadmap"><h2>導入の順番</h2><ol class="ai-roadmap"><li><span>STEP 1</span><div><h3>実際の回答で「選ばれ方」を校正</h3><p>顧客と販売担当者を分けて調査し、仮置きの効用ウェイトを実測に近づけます。調査は協力が得られる範囲から行い、未実施の段階は係数を振った幅も比較します。</p></div></li><li><span>STEP 2</span><div><h3>社内実績で「選ばれ方」を販売量へつなぐ</h3><p>販売実績と、当時の商品仕様・市場・販路の情報を対応させます。学習に使っていない後の期間や別の商品で、既存の単純な予測より有用かを検証します。</p></div></li><li><span>STEP 3</span><div><h3>保険数理評価と接続して商品案を比較</h3><p>外部条件を固定し、5年間の払込保険料総額を目的に、収益・資本・顧客負担に条件を設定します。販売量重視・収益重視・下振れ耐性重視の案を並べて判断します。</p></div></li></ol>
 <div class="ai-outcome"><span>企画会議に出すアウトプット</span><p><b>販売量重視の案</b><b>収益重視の案</b><b>環境変化に強い案</b></p><small>同じ固定条件・比較指標・出所・前提で並べ、選ぶ理由と残る不確実性を説明する。</small></div><p class="small">アプリの「5年間の払込保険料総額」は、各年度の新契約に対応するモデル上の保険料の合計です。平準払の将来継続保険料は含みません。新規資金の流入・自社内の乗換・再購入も、企画上は分けて確認します。</p><a class="button" href="guide.html#optimization">商品スペック提案の使い方を見る</a></section>
 
-<section class="chapter" id="references"><h2>参考資料</h2><p class="small">手法の原著・開発元の説明です。保険商品への適用例や導入順序は、本アプリに向けた設計案として記載しています。</p><ul class="ai-references"><li><a href="https://catboost.ai/docs/en/" target="_blank" rel="noopener">CatBoost 公式ドキュメント ↗</a><p>決定木の勾配ブースティングによる予測モデル。</p></li><li><a href="https://media.sawtoothsoftware.com/conjoint-analysis/cbc" target="_blank" rel="noopener">Sawtooth Software：選択型コンジョイント ↗</a><p>選択モデル、潜在クラス、階層ベイズによる選好推定。</p></li><li><a href="https://www.microsoft.com/en-us/research/project/econml/" target="_blank" rel="noopener">Microsoft Research：EconML ↗</a><p>観測・実験データからの因果効果推定と、仮定を置いた施策比較。</p></li><li><a href="https://proceedings.nips.cc/paper_files/paper/2021/hash/11704817e347269b7254e744b5e22dac-Abstract.html" target="_blank" rel="noopener">多目的ベイズ最適化の研究（NeurIPS 2021） ↗</a><p>複数の競合する目的と評価ノイズを扱う最適化。</p></li><li><a href="https://proceedings.mlr.press/v162/daulton22a.html" target="_blank" rel="noopener">不確実性を扱う多目的ベイズ最適化の研究（ICML 2022） ↗</a><p>入力の変動に対する頑健性を考慮する最適化。</p></li></ul></section>
-<footer class="footer"><p>OMT ／ AI活用による分析・2026年11月1日掲載</p><a href="#top">ページの先頭へ</a>　<a href="guide.html">使い方</a>　<a href="glossary.html">用語集</a></footer>
+<section class="chapter" id="references"><h2>参考資料</h2><p class="small">手法の原著・開発元の説明です。保険商品への適用例や導入順序は、本アプリに向けた設計案として記載しています。</p><ul class="ai-references"><li><a href="https://catboost.ai/docs/en/" target="_blank" rel="noopener">CatBoost 公式ドキュメント ↗</a><p>決定木の勾配ブースティングによる予測モデル。</p></li><li><a href="https://media.sawtoothsoftware.com/conjoint-analysis/cbc" target="_blank" rel="noopener">Sawtooth Software：選択型コンジョイント ↗</a><p>選択モデル、潜在クラス、階層ベイズによる選好推定。</p></li><li><a href="https://www.microsoft.com/en-us/research/project/econml/" target="_blank" rel="noopener">Microsoft Research：EconML ↗</a><p>観測・実験データからの因果効果推定と、仮定を置いた施策比較。</p></li><li><a href="https://proceedings.nips.cc/paper_files/paper/2021/hash/11704817e347269b7254e744b5e22dac-Abstract.html" target="_blank" rel="noopener">多目的ベイズ最適化の研究（NeurIPS 2021） ↗</a><p>複数の競合する目的と評価ノイズを扱う最適化。</p></li><li><a href="https://proceedings.mlr.press/v162/daulton22a.html" target="_blank" rel="noopener">不確実性を扱う多目的ベイズ最適化の研究（ICML 2022） ↗</a><p>入力の変動に対する頑健性を考慮する最適化。</p></li><li><a href="https://catboost.ai/docs/en/concepts/python-reference_datasets" target="_blank" rel="noopener">CatBoost公式データセット ↗</a><p>学習コードの練習に使えるデータの一覧。保険売上の学習済みモデルとは異なります。</p></li><li><a href="https://www.seiho.or.jp/data/statistics/summary/" target="_blank" rel="noopener">生命保険協会：生命保険事業概況 ↗</a><p>月次・四半期・年次の業界統計。集計範囲・定義は原表で確認します。</p></li><li><a href="https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages" target="_blank" rel="noopener">GitHub Pagesの仕組み ↗</a><p>静的ホスティングと、別途用意するAI接続サーバーの役割。</p></li><li><a href="https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf" target="_blank" rel="noopener">NIST：生成AIのリスク管理プロファイル ↗</a><p>誤った情報の生成など、生成AIのリスクと管理の考え方。</p></li><li><a href="https://genai.owasp.org/llm-top-10/" target="_blank" rel="noopener">OWASP：生成AIアプリの主要リスク ↗</a><p>プロンプトインジェクション・機密情報の漏えいなど。</p></li><li><a href="https://genai.owasp.org/llmrisk/llm102025-unbounded-consumption/" target="_blank" rel="noopener">OWASP：利用量の無制限な消費 ↗</a><p>利用回数・入力長の制限、監視などによる費用・負荷の管理。</p></li></ul></section>
+<footer class="footer"><p>OMT ／ AI活用による分析・2026年11月1日更新</p><a href="#top">ページの先頭へ</a>　<a href="guide.html">使い方</a>　<a href="glossary.html">用語集</a></footer>
 </main></div>
 </template>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -1396,7 +1435,7 @@ function routeInfoLink(event,a){
 document.addEventListener('click',event=>{const a=event.target.closest('a[href]');if(a)routeInfoLink(event,a)},true);
 
 // ===== Tabs (simulation and in-app reference views) =====
-const TOPS=[['in','インプット'],['out','アウトプット'],['spec','仕様書'],['glossary','用語集'],['guide','使い方'],['research','競合情報'],['ai-analysis','AI活用による分析']];
+const TOPS=[['in','インプット'],['out','アウトプット'],['spec','仕様書'],['glossary','用語集'],['guide','使い方'],['research','競合情報'],['ai-analysis','AI活用による分析（未実装）']];
 function splitSpec(){ // 仕様書パネルを h3 ごとの独立パネルに分割
   const spec=document.getElementById('spec');const nodes=[...spec.childNodes];const parent=spec.parentNode;
   let cur=null,idx=0;const intro=document.createElement('div');intro.className='panel spec';intro.dataset.top='spec';intro.dataset.sub='spec-intro';intro.dataset.title='概要';

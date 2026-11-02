@@ -138,6 +138,7 @@ textarea{width:100%;font:inherit;font-family:var(--mono);font-size:.74rem;paddin
 .opt-ranges th:first-child{min-width:165px}
 .opt-ranges label{cursor:pointer}
 .opt-ranges input[type=checkbox]{accent-color:var(--accent)}
+.input-error,.result-stale{max-width:1180px;margin:10px auto;padding:10px 12px;border:1px solid var(--warn);color:var(--warn);background:var(--panel);font-size:.82rem;overflow-wrap:anywhere;box-sizing:border-box}.calculation-status{max-width:1180px;margin:6px auto 14px;padding:0 12px;line-height:1.6;box-sizing:border-box}.field .param-effect{grid-column:1/-1!important;grid-row:auto!important;margin:2px 0 5px;font-size:.72rem;line-height:1.6;color:var(--muted)}.field .param-effect.inactive{color:var(--warn)}.field input[aria-invalid="true"]{outline:1px solid var(--warn)}
 .opt-prerequisites{padding:14px;border:1px solid var(--accent);border-radius:8px;margin:16px 0;scroll-margin-top:180px}.opt-prerequisites h3{margin:0 0 8px}.opt-prerequisites .opt-controls{grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))}.opt-prerequisites .opt-controls input{width:100%;box-sizing:border-box}.opt-error{border-left:3px solid var(--warn);padding:10px;color:var(--warn);font-size:.85rem;overflow-wrap:anywhere}.opt-prerequisites [aria-invalid="true"]{border-color:var(--warn)}
 .opt-status{margin:12px 0;font-size:.82rem;color:var(--accent)}
 .opt-status progress{display:block;width:100%;height:6px;margin-top:8px;accent-color:var(--accent)}
@@ -201,7 +202,7 @@ html.param-help-open{overflow:hidden}
 <header>
   <div>
     <h1>外貨建て保険 売上シミュレーター</h1>
-    <div class="sub">外貨建て一時払（終身・年金）の相対比較 ／ 平準払は参考試算 — v0.5</div>
+    <div class="sub">外貨建て一時払（終身・年金）の相対比較 ／ 平準払は参考試算 — v0.5.1</div>
   </div>
   <div class="scenario-actions" role="group" aria-label="シナリオの保存">
     <input type="text" id="scenName" class="namebox" placeholder="シナリオ名" aria-label="シナリオ名">
@@ -209,7 +210,9 @@ html.param-help-open{overflow:hidden}
   </div>
 </header>
 <div class="model-review-note note" id="modelWarnings" role="status"></div>
+<div id="inputError" class="input-error" role="alert" hidden><span id="inputErrorText"></span> <button type="button" class="btn small" id="fixInputError">入力欄を確認</button></div>
 <div class="kpi" id="kpi" role="region" aria-label="現在の試算結果"></div>
+<p class="calculation-status note" id="calculationStatus" role="status" aria-live="polite"></p>
 <nav class="top" id="topnav" aria-label="主要タブ"></nav>
 <nav class="sub" id="subnav" aria-label="選択中の画面の項目"></nav>
 
@@ -297,7 +300,7 @@ html.param-help-open{overflow:hidden}
           <label for="optShared-principalCost">円元本確保の保証費用（保険料比・期間累計%）<input id="optShared-principalCost" data-opt-shared="principalCost" type="number" min="0" max="20" step="0.1" placeholder="未設定なら円元本確保を除外"></label>
           <label for="optShared-targetCost">目標到達型の追加費用（保険料比・期間累計%）<input id="optShared-targetCost" data-opt-shared="targetCost" type="number" min="0" max="20" step="0.1" placeholder="未設定なら目標到達型を除外"></label>
           <label for="optShared-mvaRiskCost">MVAなしの金利リスク費用（運用利回り控除・pt/年）<input id="optShared-mvaRiskCost" data-opt-shared="mvaRiskCost" type="number" min="0" max="5" step="0.05" placeholder="未設定ならMVAなしを除外"></label>
-          <label for="optShared-marketKappaLevel" id="optLevelCost" hidden>平準払用の市場換算係数<input id="optShared-marketKappaLevel" data-opt-shared="marketKappaLevel" type="number" min="0.01" max="100" step="0.1" placeholder="未設定なら平準払を除外"></label>
+          <label for="optShared-marketKappaLevel" id="optLevelCost" hidden>平準払用の市場換算係数<input id="optShared-marketKappaLevel" data-opt-shared="marketKappaLevel" type="number" min="0.01" max="100" step="0.01" placeholder="未設定なら平準払を除外"></label>
         </div>
         <p id="optReadiness" class="note" role="status" aria-live="polite"></p>
         <p id="optError" class="opt-error" role="alert" tabindex="-1" hidden></p>
@@ -319,6 +322,7 @@ html.param-help-open{overflow:hidden}
       <div class="row" style="margin-top:12px"><button class="btn primary" id="runOptimizer">最大販売案を探す</button><button class="btn" id="cancelOptimizer" disabled>中止</button><button class="btn" id="resetOptRanges">探索範囲を初期値に戻す</button></div>
       <div class="opt-status" role="status" aria-live="polite"><span id="optStatus">探索範囲を確認して実行してください。</span><progress id="optProgress" max="1" value="0" hidden aria-label="商品候補の探索進捗"></progress></div>
       <div id="optFixed" class="opt-fixed note" hidden></div>
+      <p id="optStale" class="result-stale" role="status" hidden>入力条件が変わったため、以前の商品提案を非表示にしました。「最大販売案を探す」で再計算してください。</p>
       <div id="optResults" class="opt-results" hidden></div>
       <p class="note">提案は指定した候補範囲内・現行モデル上の最大案です。連続値全体の最適解や実際の販売量を保証するものではありません。費用が未設定の候補は除外し、入力済みの仮定値で収益制約を判定します。正式な費用校正は別途必要で、商品化には数理・運用・法務による別途検証が必要です。</p>
     </div>
@@ -340,7 +344,7 @@ html.param-help-open{overflow:hidden}
         <button class="btn small primary" id="applyFilter">条件で取得</button>
         <span class="note" id="catalogNote"></span>
       </div>
-      <p class="note"><label><input type="checkbox" id="showPower"> 販売力の仮定を表示（実績・企業評価ではありません）</label></p><div class="tablewrap"><table class="comp" id="tComp"></table></div>
+      <p class="note"><label><input type="checkbox" id="showPower"> 販売力の仮定を表示（実績・企業評価ではありません）</label></p><p class="note" id="compScopeNote"></p><div class="tablewrap"><table class="comp" id="tComp"></table></div>
       <div class="row" style="margin-top:8px"><button class="btn small" id="addComp">行を追加</button><button class="btn small" id="resetComp">既定値に戻す</button><button class="btn small" id="showCatalog">カタログ全件を表示</button></div>
     </div>
 
@@ -390,7 +394,7 @@ html.param-help-open{overflow:hidden}
         <label class="note">乱数シード <input type="number" id="mcSeed" value="20261102" min="0" max="4294967295" step="1" style="width:110px"></label><button class="btn primary" id="runMC" type="button">モンテカルロ実行</button>
       </div>
       <p class="note" id="mcRateModeNote"></p><p class="note">連動は自社だけ利率を据え置く偏りを除く設定です。市場・外貨比率・循環購入の非線形性が残るため、全体の帯が必ず狭くなることや中央値が基準値へ近づくことは保証しません。</p><div class="note" id="mcNote" role="status" aria-live="polite" style="margin-bottom:6px">金利3系列と為替を相関付きで動かし、年度別ANPの分布（P10〜P90帯）を描きます。「モンテカルロ実行」を押すと結果を表示します。</div>
-      <div class="chartbox"><canvas id="cMC"></canvas></div>
+      <p id="mcStale" class="result-stale" role="status" hidden>入力条件が変わったため、以前のグラフを非表示にしました。「モンテカルロ実行」で現在の条件を再計算してください。</p><div class="chartbox" id="mcChart"><canvas id="cMC"></canvas></div>
       <p class="note"><a href="#spec-9">保険数理記法による計算式・前提を見る ↗</a>（仕様書 第9節）</p>
     </div>
 
@@ -411,7 +415,7 @@ html.param-help-open{overflow:hidden}
 
     <div class="panel spec" id="spec" data-top="spec" data-sub="spec-intro" data-title="概要">
       <h2>仕様書 — 前提・数式・データ</h2>
-      <div class="note" style="margin-bottom:10px">v0.5（2026-11-02）。<span class="pill data">実データ</span>は公開統計から取得した値、<span class="pill cal">回帰／校正</span>は実データから推定・校正した係数、<span class="pill assume">仮定</span>は統計に無いため置いた係数で差し替え前提。</div>
+      <div class="note" style="margin-bottom:10px">v0.5.1（2026-11-02、入力反映と結果の更新表示を修正。数式・係数はv0.5と同じ）。<span class="pill data">実データ</span>は公開統計から取得した値、<span class="pill cal">回帰／校正</span>は実データから推定・校正した係数、<span class="pill assume">仮定</span>は統計に無いため置いた係数で差し替え前提。</div>
 
       <p class="note">各モデルの数式を保険数理の記法で記載しています。記号と小数・百分率の対応は第2節、収益性は第7節、確率過程は第9節を参照してください。</p>
 
@@ -527,7 +531,7 @@ html.param-help-open{overflow:hidden}
         <li>静的HTML＋同梱model-v05.js＋competitors.json。Chart.js・Google Fontsは外部読込。</li>
       </ul>
 
-      <h3>12. 既知の限界（v0.5・2026-11-02）</h3><ul><li>対象市場は外貨建て一時払（終身・年金）だが、規模の元系列は個人年金ANP。κは入力可能にしたが実測で未校正。比率・販路・商品構成の差は残り、絶対販売額の根拠としては不足。平準払は別κ・同払込競合を使うが、専用の実績モデルは未構築。</li><li>回帰は9観測・5係数・残差自由度4。2016ダミーが単一年度を吸収する。通常OLSの標準誤差は独立・等分散を仮定した参考値。</li><li>利率2.0を含む既定効用ウェイト、チャネル弾性、再購入・取込率は仮定。2017年の市場総量変化は相対シェアの校正根拠から外した。調査は販売担当者の提案意向で、顧客の購入行動とは一致しない。サンプル回答は実績ではない。</li><li>外貨比率の地銀2点ロジットは大きく外挿する。固定比率とも比較が必要。競合の一部項目・販売力は仮置きで、販売力を既契約構成の代理にも使っている。</li><li>4年6割を年率化して到達とその他流出を分けたが、参考局面・目標係数・為替係数は未推定。年齢・契約時点・到達障壁の経路依存や既契約利率別の集団を扱わない。MCは保有を経路更新するが、正式なALM・契約群CFではない。他社保有は市場連動の代理値でストックを更新しない。</li><li>保証・MVA費用は社内入力で、空欄の候補は除外し、ゼロ入力は警告付きで比較。入力値の正当性は検証していない。税・準備金・再保険・ヘッジ・死亡率・経費配賦は未実装。解約控除収入・為替収益も入力した仮定に依存し、平準払の想定粗利益は非表示。</li><li>MCはパラメータ推定誤差、規制変更、競合固有の改定、豪ドル対米ドルの変動を発生させない。非線形性により中央値が決定論に一致する保証はない。シードを揃えて条件差を比較する。</li><li>実名の競合情報とカタログは公開のまま。販売力列を隠しても元データを非公開にするものではなく、企業評価の実測値ではない。顧客向け資料は仮定と出所を確認する。</li></ul>
+      <h3>12. 既知の限界（v0.5.1・2026-11-02）</h3><p>入力画面の現在案は有効な値の変更で自動再計算する。費用・上限・平均保険料・発売年度などは影響する指標が異なり、各入力欄に適用条件を表示する。MC・商品提案は手動実行で、条件変更後は以前の結果を非表示にする。入力エラーがある場合、現在案で使用中の項目なら試算表示を停止し、未使用項目なら警告して現在案の計算を続ける。商品提案・保存では入力範囲の確認を必須とする。表示の丸めより小さい変化は更新メッセージで差分を表示する。</p><ul><li>対象市場は外貨建て一時払（終身・年金）だが、規模の元系列は個人年金ANP。κは入力可能にしたが実測で未校正。比率・販路・商品構成の差は残り、絶対販売額の根拠としては不足。平準払は別κ・同払込競合を使うが、専用の実績モデルは未構築。</li><li>回帰は9観測・5係数・残差自由度4。2016ダミーが単一年度を吸収する。通常OLSの標準誤差は独立・等分散を仮定した参考値。</li><li>利率2.0を含む既定効用ウェイト、チャネル弾性、再購入・取込率は仮定。2017年の市場総量変化は相対シェアの校正根拠から外した。調査は販売担当者の提案意向で、顧客の購入行動とは一致しない。サンプル回答は実績ではない。</li><li>外貨比率の地銀2点ロジットは大きく外挿する。固定比率とも比較が必要。競合の一部項目・販売力は仮置きで、販売力を既契約構成の代理にも使っている。</li><li>4年6割を年率化して到達とその他流出を分けたが、参考局面・目標係数・為替係数は未推定。年齢・契約時点・到達障壁の経路依存や既契約利率別の集団を扱わない。MCは保有を経路更新するが、正式なALM・契約群CFではない。他社保有は市場連動の代理値でストックを更新しない。</li><li>保証・MVA費用は社内入力で、空欄の候補は除外し、ゼロ入力は警告付きで比較。入力値の正当性は検証していない。税・準備金・再保険・ヘッジ・死亡率・経費配賦は未実装。解約控除収入・為替収益も入力した仮定に依存し、平準払の想定粗利益は非表示。</li><li>MCはパラメータ推定誤差、規制変更、競合固有の改定、豪ドル対米ドルの変動を発生させない。非線形性により中央値が決定論に一致する保証はない。シードを揃えて条件差を比較する。</li><li>実名の競合情報とカタログは公開のまま。販売力列を隠しても元データを非公開にするものではなく、企業評価の実測値ではない。顧客向け資料は仮定と出所を確認する。</li></ul>
 
       <h3>13. 商品スペック提案（制約付き全候補比較）</h3><p>探索開始時の外部環境・競合・販売体制・保有・収益前提・平均契約保険料・効用ウェイトを固定前提e₀とする。この節のdは商品仕様ベクトルを表し、第2節の解約控除率のスカラーdと区別する。変更を許可した商品仕様の離散集合を𝒟とし、第3〜7節の同じモデルからAₜ(d;e₀)、Pₜ(d;e₀)、Nₜ(d;e₀)、g(d;e₀)を計算する。</p><h4>13.1 目的関数と収益制約</h4><p>国債連動モードの探索変数はs_own、固定モードはc_fixed。費用・手数料上限・市場換算係数は探索開始時の固定前提。</p><div class="actuarial-equation" tabindex="0" role="region" aria-label="販売総量の目的関数"><math display="block"><mrow><mrow><msub><mi>V</mi><mrow><mi>P</mi></mrow></msub><mo>=</mo><mrow><munderover><mo>∑</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><mn>5</mn></munderover><msub><mi>P</mi><mrow><mi>t</mi></mrow></msub></mrow></mrow><mo>,</mo><mrow><msub><mi>V</mi><mrow><mi>A</mi></mrow></msub><mo>=</mo><mrow><munderover><mo>∑</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><mn>5</mn></munderover><msub><mi>A</mi><mrow><mi>t</mi></mrow></msub></mrow></mrow><mo>,</mo><mrow><msub><mi>V</mi><mrow><mi>N</mi></mrow></msub><mo>=</mo><mrow><munderover><mo>∑</mo><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><mn>5</mn></munderover><msub><mi>N</mi><mrow><mi>t</mi></mrow></msub></mrow></mrow></mrow></math><span class="equation-number">(13.1)</span></div><div class="actuarial-equation" tabindex="0" role="region" aria-label="収益制約下の商品仕様探索"><math display="block"><mrow><mrow><msup><mi>d</mi><mrow><mo>∗</mo></mrow></msup><mo>∈</mo><msub><mo>arg max</mo><mrow><mrow><mi>d</mi><mo>∈</mo><mi>𝒟</mi><mo>,</mo><mrow><mo>g</mo><mrow><mo>(</mo><mrow><mi>d</mi><mo>;</mo><msub><mi>e</mi><mrow><mn>0</mn></mrow></msub></mrow><mo>)</mo></mrow></mrow><mo>≥</mo><msub><mi>g</mi><mrow><mtext>min</mtext></mrow></msub></mrow></mrow></msub><mrow><mo>V</mo><mrow><mo>(</mo><mrow><mi>d</mi><mo>;</mo><msub><mi>e</mi><mrow><mn>0</mn></mrow></msub></mrow><mo>)</mo></mrow></mrow></mrow></mrow></math><span class="equation-number">(13.2)</span></div><p>既定のVは5年間の払込保険料総額（モデル値）V<sub>P</sub>。V<sub>A</sub>・V<sub>N</sub>も選べる。いずれも循環販売を含む。平準払のV<sub>P</sub>は新契約年払保険料の5年合計で、継続払込は含まない。g<sub>min</sub>の既定は0、画面の%値は100g<sub>min</sub>。制約を無効にした場合はgによる絞込みを行わない。</p><h4>13.2 候補集合と選択規則</h4><div class="actuarial-equation" tabindex="0" role="region" aria-label="数値仕様の離散候補集合"><math display="block"><mrow><mrow><msub><mi>𝒟</mi><mrow><mi>j</mi></mrow></msub><mo>=</mo><mrow><mo>{</mo><msub><mi>l</mi><mrow><mi>j</mi></mrow></msub><mo>+</mo><mi>k</mi><msub><mi>h</mi><mrow><mi>j</mi></mrow></msub><mo>:</mo><mi>k</mi><mo>∈</mo><msub><mi>ℤ</mi><mrow><mrow><mo>≥</mo><mn>0</mn></mrow></mrow></msub><mo>,</mo><msub><mi>l</mi><mrow><mi>j</mi></mrow></msub><mo>+</mo><mi>k</mi><msub><mi>h</mi><mrow><mi>j</mi></mrow></msub><mo>≤</mo><msub><mi>u</mi><mrow><mi>j</mi></mrow></msub><mo>}</mo><mo>∪</mo><mo>{</mo><msub><mi>u</mi><mrow><mi>j</mi></mrow></msub><mo>}</mo><mo>∪</mo><mo>{</mo><msub><mi>d</mi><mrow><mtext>0,j</mtext></mrow></msub><mo>:</mo><msub><mi>l</mi><mrow><mi>j</mi></mrow></msub><mo>≤</mo><msub><mi>d</mi><mrow><mtext>0,j</mtext></mrow></msub><mo>≤</mo><msub><mi>u</mi><mrow><mi>j</mi></mrow></msub><mo>}</mo></mrow></mrow></mrow></math><span class="equation-number">(13.3)</span></div><p>lⱼ・uⱼ・hⱼは下限・上限・刻み幅、d₀,ⱼは現在値。範囲内の現在値と上限も含め、重複を除く。固定項目は現在値だけの集合とする。カテゴリの許可集合と数値集合の組合せを全列挙し、目標到達型以外では目標値を現在値に固定する。通貨・払込形態は既定で現在値に固定。候補数は100万件まで。</p><p>有限の評価値を持ち制約を満たす候補を、Vの降順、同値ならgの降順、さらに同値なら列挙順で並べ、上位3件を表示する。制約に合う候補がなければ最大案は表示しない。離散集合内の最大値であり、連続領域の大域最適解や商品化可能性を保証するものではない。</p><p>入力・ウェイト・探索設定の変更で進行中の探索を中止し、古い結果の反映を無効にする。反映時は商品仕様だけを変更する。費用未設定の仕様、販売手数料上限超過、平準払用κ未設定は、粗利益率制約がオフでも除外する。0を明示入力すれば比較対象に戻り、最大案にゼロ仮定のバッジを付ける。最大案は現行モデル上の相対比較と結果直下に表示する。入力は利用者の仮定で、正式な費用の妥当性を認定したものではない。</p>
 
@@ -561,7 +565,7 @@ html.param-help-open{overflow:hidden}
 <main id="content">
 <div class="intro"><div class="eyebrow">USER GUIDE · v0.5対応</div><h1>使い方と<br>パラメータの考え方</h1><p class="lead">何を入力し、どの前提で、結果をどう読むか。商品企画で案を比較するときに確認したいポイントをまとめました。</p><div class="actions"><a class="button primary" href="#quickstart">操作の流れを見る</a><a class="button" href="#parameters">パラメータの意味を調べる</a><a class="button" href="glossary.html">用語集を見る</a></div><p class="small">上のタブで試算と説明を切り替えられます。入力中の値はそのまま保持されます。「試算に戻る」で、直前に見ていた画面に戻れます。</p><div class="callout"><p><strong>このアプリは、企画案の相対比較を支える試算ツールです。</strong></p><p>表示値は実績や売上の確約ではありません。外部データから求めた係数、簡易的な校正、置き値の仮定を組み合わせています。基準案を保存し、同じ条件で案の差を見る使い方を想定しています。</p></div></div>
 
-<section class="chapter" id="v05"><h2>v0.5：利率連動・費用・市場の前提</h2><ol class="steps"><li><b>自社利率の改定方法を選ぶ</b><p>商品仕様で国債連動（既定）または固定を選択。連動時は国債対比スプレッドを入力。MC・感応度・最大案も同じモード。</p></li><li><b>費用と上限を入力する</b><p>収益前提の保証費用・MVAなし費用・手数料上限を入力。空欄は未評価、0は利用者が置いたゼロ仮定。入力後は探索を再実行すると該当仕様も比較できる。</p></li><li><b>市場の代理指標を確認する</b><p>一時払κ=1は未校正。平準払は別κを設定しないと探索対象外。同じ通貨・払込形態の競合を比較。絶対販売額は実績で別途検証する。</p></li><li><b>同じ条件で結果を比較する</b><p>MCは各年の保有を引き継ぐ。乱数シードを揃えると再現可能。旧保存案は固定利率で復元し、数値はv0.5で再計算されるため旧結果とは一致しない。</p></li></ol></section><section class="chapter" id="quickstart"><h2>はじめの操作</h2><ol class="steps">
+<section class="chapter" id="input-updates"><h2>入力を変えても数字が動かないとき</h2><p>現在案は入力変更時に自動再計算し、上部に差分を表示します。丸めで見えない小さな差も更新メッセージに表示します。</p><ul><li>平均契約保険料は件数、発売年度は年度ラベルを変えます。</li><li>運用・保証・MVA等の費用は主に粗利益率へ反映し、売上を直接変えません。</li><li>保証・利率モード・払込形態によって未使用となる入力には、適用条件を表示します。現在案と違う通貨・払込形態の競合は現在案の比較対象外です。</li><li>MCと商品スペック提案は手動実行です。条件変更後は旧結果を非表示にし、再実行を案内します。</li><li>使用中の入力のエラーは試算表示を停止します。「入力欄を確認」から修正すると自動復帰します。未使用項目のエラーは警告して現在案の計算を続けますが、商品提案・保存の前には修正してください。</li></ul></section><section class="chapter" id="v05"><h2>v0.5：利率連動・費用・市場の前提</h2><ol class="steps"><li><b>自社利率の改定方法を選ぶ</b><p>商品仕様で国債連動（既定）または固定を選択。連動時は国債対比スプレッドを入力。MC・感応度・最大案も同じモード。</p></li><li><b>費用と上限を入力する</b><p>収益前提の保証費用・MVAなし費用・手数料上限を入力。空欄は未評価、0は利用者が置いたゼロ仮定。入力後は探索を再実行すると該当仕様も比較できる。</p></li><li><b>市場の代理指標を確認する</b><p>一時払κ=1は未校正。平準払は別κを設定しないと探索対象外。同じ通貨・払込形態の競合を比較。絶対販売額は実績で別途検証する。</p></li><li><b>同じ条件で結果を比較する</b><p>MCは各年の保有を引き継ぐ。乱数シードを揃えると再現可能。旧保存案は固定利率で復元し、数値はv0.5で再計算されるため旧結果とは一致しない。</p></li></ol></section><section class="chapter" id="quickstart"><h2>はじめの操作</h2><ol class="steps">
 <li><b>外部環境を決める</b><p>「インプット → 外部環境」で米・豪・日の金利、為替水準、円安トレンドを設定します。外貨建て比率は連動／固定のどちらを使うかも決めます。</p></li>
 <li><b>商品仕様と販売前提を入力する</b><p>通貨、利率、期間、保証、手数料に加え、「販売体制・保有」「収益前提」を揃えます。会社の実績値と比較のための仮定を、メモで区別しておきます。</p></li>
 <li><b>競合を同じ比較範囲に揃える</b><p>「競合商品」で条件を選び「条件で取得」。テーブルに入った商品が計算対象です。公表値・仮置き・出所を確認します。入力中のフィルターだけでは計算対象は変わりません。</p></li>
@@ -855,9 +859,24 @@ const fmt={us10:v=>v.toFixed(2),au10:v=>v.toFixed(2),jp10:v=>v.toFixed(2),usdjpy
 function val(id){return parseFloat(document.getElementById(id).value)}
 function setVal(id,v){document.getElementById(id).value=v}
 const EXTRA_FIELDS=["creditSpread", "marketKappa", "marketKappaLevel", "marketReferenceTerm", "externalTarget", "principalCost", "targetCost", "mvaRiskCost", "commLimit", "surrenderAvg", "fxRevenueShare"];
-function validateNewInputs(){const bad=EXTRA_FIELDS.map(id=>document.getElementById(id)).find(e=>e.value!==''&&(!Number.isFinite(e.valueAsNumber)||(e.min!==''&&e.valueAsNumber<+e.min)||(e.max!==''&&e.valueAsNumber>+e.max)));if(!bad)return true;const label=document.getElementById(bad.getAttribute('aria-labelledby'));document.getElementById('modelWarnings').textContent=(label?.textContent||bad.id)+'：'+bad.min+'〜'+bad.max+'の数値を入力してください。表示値は変更前の試算です。';return false;}
+function inputErrors(){
+  return EXTRA_FIELDS.flatMap(id=>{
+    const el=document.getElementById(id),invalid=el.validity.badInput||(el.value!==''&&(!Number.isFinite(el.valueAsNumber)||(el.min!==''&&el.valueAsNumber<+el.min)||(el.max!==''&&el.valueAsNumber>+el.max)));
+    el.setAttribute('aria-invalid',String(invalid));const mirror=document.getElementById('optShared-'+id);if(mirror&&invalid)mirror.setAttribute('aria-invalid','true');
+    const label=document.getElementById(el.getAttribute('aria-labelledby'))||document.querySelector('label[for="'+id+'"]');
+    return invalid?[{id,el,message:(label?.textContent||id).replace(/仮定|\?/g,'').trim()+'：'+el.min+'〜'+el.max+'の数値を入力してください。'}]:[];
+  });
+}
+function showInputErrors(errors,blocking){
+  const box=document.getElementById('inputError');box.hidden=!errors.length;
+  if(errors.length){box.dataset.field=(blocking||errors[0]).id;document.getElementById('inputErrorText').textContent=(blocking?'再計算を停止しています。':'現在案では未使用の項目に入力エラーがあります。現在案の再計算は継続します。')+' '+(blocking||errors[0]).message;}
+}
+function validateNewInputs(scope='all'){
+  const errors=inputErrors(),p=readState(),bad=errors.find(e=>scope==='all'||parameterEffect(e.id,p).active);
+  if(!bad)return true;showInputErrors(errors,bad);document.getElementById('modelWarnings').textContent=bad.message;return false;
+}
 function readState(){const o={...S,modelVersion:'0.5'};sliders.forEach(id=>o[id]=val(id));EXTRA_FIELDS.forEach(id=>{const el=document.getElementById(id);o[id]=el.value===''?null:el.valueAsNumber});o.credit=GaikaModel.effectiveCredit(o);o.comp=COMP;return o}
-function syncCreditUI(){const p=readState(),linked=S.creditMode==='link';document.getElementById('credit').disabled=linked;document.getElementById('creditSpreadField').hidden=!linked;if(linked)setVal('credit',p.credit);document.getElementById('creditv').textContent=p.credit.toFixed(2);document.getElementById('creditModeNote').textContent=linked?'自社利率＝現在の基準国債＋スプレッド（下限0%）。感応度・MC・探索もスプレッドを固定。':'自社利率を据え置いた場合の試算です。感応度・MCでは競合だけが国債に追随します。';}
+function syncCreditUI(){const p=readState(),linked=S.creditMode==='link';document.getElementById('credit').disabled=linked;document.getElementById('creditSpreadField').hidden=!linked&&document.getElementById('creditSpread').getAttribute('aria-invalid')!=='true';if(linked)setVal('credit',p.credit);document.getElementById('creditv').textContent=p.credit.toFixed(2);document.getElementById('creditModeNote').textContent=linked?'自社利率＝現在の基準国債＋スプレッド（下限0%）。感応度・MC・探索もスプレッドを固定。':'自社利率を据え置いた場合の試算です。感応度・MCでは競合だけが国債に追随します。';}
 
 function resetEnv(){setVal('us10',latest(HIST.us10));setVal('au10',latest(HIST.au10));setVal('jp10',latest(HIST.jp10));setVal('usdjpy',latest(HIST.usdjpy));setVal('fxtrend',0)}
 function defaultCredit(){const ref=S.ccy==='USD'?val('us10'):val('au10');if(S.creditMode==='link')setVal('credit',ref+val('creditSpread'));else setVal('credit',Math.max(0.5,Math.round(ref*20)/20))}
@@ -953,8 +972,80 @@ async function optSearch(base,cfg,evaluate,{cancelled=()=>false,onProgress=()=>{
   abort();return {top,done,total:grid.total,feasible,invalid,excluded};
 }
 
+// ===== Input applicability and calculation freshness =====
+function parameterEffect(id,p){
+  const inactive=text=>({active:false,text}),active=text=>({active:true,text});
+  const shared='商品スペック提案では、その仕様の候補判定に使用します。';
+  switch(id){
+    case 'credit':return p.creditMode==='link'?inactive('国債連動中は自動計算です。利率を変えるには国債対比スプレッドを入力してください。'):active('固定予定利率として、魅力度・到達確率・粗利益率に反映します。');
+    case 'creditSpread':return p.creditMode==='link'?active('自社利率を変え、売上・循環購入・粗利益率に反映します。'):inactive('固定利率モードの現在案では使いません。');
+    case 'fcshare':return p.ptype==='level'?inactive('平準払の市場には一時払の外貨比率を使いません。'):p.fcmode==='link'?inactive('連動モードでは使いません。「固定」に切り替えると市場規模に反映します。'):active('一時払の対象市場規模と売上に反映します。');
+    case 'jp10':return p.ptype==='level'||p.fcmode!=='link'?inactive('現在の市場設定では日本金利を売上に使いません（MCのANPも同様）。一時払・外貨比率連動で有効です。'):active('日米金利差から外貨比率・市場規模・売上を変えます。');
+    case 'marketKappa':return p.ptype==='single'?active('一時払の市場規模と売上に反映します。'):inactive('平準払の現在案では使いません。一時払候補の探索に使用します。');
+    case 'marketKappaLevel':return p.ptype==='level'?active('平準払の市場規模と売上に反映します。空欄は未校正の参考表示です。'):inactive('一時払の現在案では使いません。平準払候補の探索に使用します。');
+    case 'target':return p.guar==='target'?active('目標到達型の魅力度と到達確率に反映。到達確率には上下限があります。'):inactive('現在の保証では使いません。目標到達型を選ぶと有効になります。');
+    case 'principalCost':return p.guar==='principal'?active('現在案の粗利益率だけを下げます。売上は直接変えません。'+shared):inactive('円元本確保を選んだ案だけの費用です。'+shared);
+    case 'targetCost':return p.guar==='target'?active('現在案の粗利益率だけを下げます。売上は直接変えません。'+shared):inactive('目標到達型を選んだ案だけの費用です。'+shared);
+    case 'mvaRiskCost':return !p.mva?active('MVAなしの運用利回りを控除し、粗利益率に反映。売上は直接変えません。'):inactive('MVAありの現在案では使いません。MVAなしの候補には使用します。');
+    case 'commLimit':return inactive('商品スペック提案の候補を絞る上限です。現在案の手数料・売上は直接変えません。');
+    case 'avgprem':return active('件数だけを換算します。このモデルでは売上金額・ANPは変えません。');
+    case 'launch':return active('年度ラベルだけを変えます。経済環境は自動で将来予測しないため、発売から各年の金額は変わりません。');
+    case 'spreadAdd':case 'clawback':case 'capratio':case 'hurdle':return active('粗利益率・一時払の想定粗利益に反映。売上・件数は直接変えません。');
+    case 'surrenderAvg':return p.sc>0?active('解約控除収入から粗利益率に反映。入力した初年度控除率が上限です。'):inactive('初年度解約控除が0%のため、控除収入は0です。');
+    case 'fxRevenueShare':return p.fxfee>0?active('為替手数料の収益算入額と粗利益率に反映。売上は直接変えません。'):inactive('為替手数料が0銭のため、収益算入額は0です。');
+    case 'inforce':case 'recap':return p.guar==='target'?active('自社の到達解約からの再購入に反映。到達確率が低いと影響も小さくなります。'):inactive('現在の保証では自社の到達解約を計上しないため、循環売上に使いません。');
+    case 'marketReferenceTerm':case 'externalTarget':return p.poach>0?active('他社保有からの取込に使用。該当競合がない場合や到達確率の上下限では効かないことがあります。'):inactive('他社取込率が0%の現在案では、取込売上に使いません。');
+    case 'bank':case 'sec':return active('チャネル構成を正規化して販売推進力に反映。自社手数料＝競合平均なら、構成を変えても推進力は同じです。');
+    case 'usdjpy':return active('このモデルでは為替手数料率の換算に反映。小さな変更は売上の表示桁に現れない場合があります。');
+    default:return active('売上・件数の計算に反映します。');
+  }
+}
+function syncParameterEffects(){
+  const p=readState();
+  for(const id of [...sliders,...EXTRA_FIELDS]){
+    const input=document.getElementById(id),field=input.closest('.field');if(!field)continue;
+    let note=document.getElementById('effect-'+id);if(!note){note=document.createElement('small');note.id='effect-'+id;note.className='param-effect';field.append(note);input.setAttribute('aria-describedby',note.id)}
+    const effect=parameterEffect(id,p);note.textContent=effect.text;note.classList.toggle('inactive',!effect.active);
+  }
+  document.getElementById('target').disabled=p.guar!=='target';
+  document.getElementById('fcshare').disabled=p.fcmode==='link'||p.ptype==='level';
+}
+let LAST_CALC=null,CALC_VALID=true,MC_SIGNATURE=null;
+function setCalculationValidity(valid){
+  CALC_VALID=valid;
+  for(const id of ['tiles','cForecast','tForecast','cTornado','tScen']){const el=document.getElementById(id);(el.matches('canvas')?el.parentElement:el).hidden=!valid;}
+  for(const id of ['copyForecast','copyScen'])document.getElementById(id).disabled=!valid;
+  if(!valid){
+    document.getElementById('kpi').textContent='入力エラーのため、現在の条件の試算は表示できません。';
+    document.getElementById('calculationStatus').textContent='上の「入力欄を確認」から修正すると、自動で再計算します。';
+    if(OPT_JOB)stopOpt('入力エラーのため探索を中止しました。');
+    if(OPT_RESULT){OPT_RESULT.stale=true;document.getElementById('optResults').hidden=true;document.querySelectorAll('[data-opt-apply]').forEach(b=>b.disabled=true);document.getElementById('optStale').hidden=false;}
+  }
+  refreshMCValidity();
+}
+function renderCalculationFeedback(p,m){
+  const signature=JSON.stringify({p,W,coef:REG.coef}),el=document.getElementById('calculationStatus');
+  if(LAST_CALC?.signature===signature){if(el.dataset.error==='true')el.textContent='入力エラーを修正し、現在の条件で再計算しました。';el.dataset.error='false';return}
+  const changes=[],previous=LAST_CALC?.m;
+  const delta=(n,digits)=>{const d=Math.abs(n)>=Math.pow(10,-digits)/2?digits:6;return (n>0?'+':'')+n.toFixed(d)};
+  if(previous){for(const [label,now,before,unit,digits] of [
+    ['3年目ANP',m.years[2].anp,previous.anp,'億円',2],['件数',m.years[2].cnt,previous.count,'件',1],['粗利益率',m.grossMargin,previous.margin,'pt',2]
+  ])if(Math.abs(now-before)>1e-10)changes.push(label+' '+delta(now-before,digits)+unit);
+    if(p.launch!==LAST_CALC.launch)changes.push('3年目は'+m.years[2].fy+'年度');
+  }
+  el.textContent=previous?'入力を反映して再計算しました。'+(changes.length?changes.join(' ／ '):'売上・件数・粗利益率は同じです。各入力欄の適用条件をご確認ください。'):'現在の入力で試算済みです。モンテカルロ・商品提案は、各画面の実行ボタンで計算します。';
+  el.dataset.error='false';LAST_CALC={signature,launch:p.launch,m:{anp:m.years[2].anp,count:m.years[2].cnt,margin:m.grossMargin}};
+}
+function mcSignature(){return JSON.stringify({p:readState(),W,coef:REG.coef,sig:DYN.sig,corr:DYN.corr,seed:document.getElementById('mcSeed').value})}
+function refreshMCValidity(){
+  const stale=!!MC_SIGNATURE&&(!CALC_VALID||MC_SIGNATURE!==mcSignature());
+  document.getElementById('mcStale').textContent='入力条件が変わったため、以前のグラフを非表示にしました。「モンテカルロ実行」で現在の条件を再計算してください。';
+  document.getElementById('mcStale').hidden=!stale;document.getElementById('mcChart').hidden=!MC_SIGNATURE||stale;
+  document.getElementById('mcNote').hidden=stale;
+}
+
 // ===== Rendering =====
-function yen(v,unit='億円'){return (Math.round(v*10)/10).toLocaleString('ja-JP',{maximumFractionDigits:1})+' '+unit}
+function yen(v,unit='億円',digits=1){return v.toLocaleString('ja-JP',{maximumFractionDigits:digits})+' '+unit}
 function pct(v,d=1){return v.toFixed(d)+'%'}
 let charts={};
 const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
@@ -963,9 +1054,13 @@ function upsert(id,cfg){if(charts[id]){charts[id].data=cfg.data;charts[id].optio
 
 let lastForecastRows=[];
 function render(){
-  syncOptPrerequisites();
-  if(!validateNewInputs())return;syncCreditUI();const p=readState();const m=model(p);
+  syncOptPrerequisites();syncParameterEffects();
+  const errors=inputErrors(),inputState=readState(),blocking=errors.find(e=>parameterEffect(e.id,inputState).active);
+  showInputErrors(errors,blocking);setCalculationValidity(!blocking);
+  if(blocking){document.getElementById('modelWarnings').textContent=blocking.message;document.getElementById('calculationStatus').dataset.error='true';return}
+  syncCreditUI();const p=readState();const m=model(p);renderCalculationFeedback(p,m);
   const y3=m.years[2];
+  const applicable=p.comp.filter(q=>q.ccy===p.ccy&&(q.ptype||'single')===p.ptype);document.getElementById('compScopeNote').textContent='現在案の比較対象：'+p.ccy+'・'+(p.ptype==='single'?'一時払':'平準払')+' '+applicable.length+'商品。他の通貨・払込形態の行、商品名・時点の編集は現在案の売上に反映しません。';
   const notices=['市場換算は未校正の代理モデル（κ='+m.kappa+'）'];
   if(m.unknownCosts.length)notices.push('費用未設定：'+m.unknownCosts.join('／')+'。収益は当該費用控除前の参考値');
   if(m.zeroCosts.length)notices.push('費用ゼロの入力仮定：'+m.zeroCosts.join('／'));
@@ -978,16 +1073,16 @@ function render(){
   const W0={...W};const band=[0.5,2].map(f=>{W={...W0,credit:W0.credit*f,term:W0.term*f,sc:W0.sc*f,mva:W0.mva*f,phi:W0.phi*f,guarNone:W0.guarNone*f,guarTarget:W0.guarTarget*f,guarPrincipal:W0.guarPrincipal*f,target:W0.target*f,level:W0.level*f};const v=model(p).years[2].anp;W=W0;return v});
   const bandLo=Math.min(...band,y3.anp),bandHi=Math.max(...band,y3.anp);
   document.getElementById('tiles').innerHTML=`
-    <div class="tile"><div class="k">年換算保険料 (ANP)</div><div class="v">${yen(y3.anp)}</div><div class="d">うち循環 ${yen(y3.anpRec)}・${p.ccy}市場 ${yen(m.mkt)}（外貨建て比率 ${pct(m.fc*100,0)}）<br>未校正ウェイトを½〜2倍に振ると ${bandLo.toFixed(0)}〜${bandHi.toFixed(0)}億円</div></div>
+    <div class="tile"><div class="k">年換算保険料 (ANP)</div><div class="v">${yen(y3.anp,'億円',2)}</div><div class="d">うち循環 ${yen(y3.anpRec)}・${p.ccy}市場 ${yen(m.mkt)}（外貨建て比率 ${pct(m.fc*100,0)}）<br>未校正ウェイトを½〜2倍に振ると ${bandLo.toFixed(0)}〜${bandHi.toFixed(0)}億円</div></div>
     <div class="tile"><div class="k">${p.ptype==='single'?'払込保険料総額':'年払保険料合計'}</div><div class="v">${yen(y3.premTotal)}</div><div class="d">${p.ptype==='single'?'ANP×'+p.term+'年':'平準払'}</div></div>
     <div class="tile"><div class="k">新契約件数</div><div class="v">${Math.round(y3.cnt).toLocaleString('ja-JP')} <span style="font-size:.8rem">件</span></div><div class="d">平均 ${p.avgprem}万円/件</div></div>
     <div class="tile"><div class="k">シェア（同通貨・多項ロジット）</div><div class="v">${pct(m.share*100)}</div><div class="d">U=${m.U.toFixed(2)}, 市場平均利率 ${pct(m.cbar,2)}, 到達確率 ${pct(m.pReach*100)}/年</div></div>
-    <div class="tile ${tileCls}"><div class="k">粗利益率（保険料比・期間累計）</div><div class="v">${pct(m.grossMargin)}</div><div class="d">保証費用 ${pct(m.guaranteeCost,2)}、MVAなし費用 ${pct(p.mva?0:(p.mvaRiskCost||0),2)}pt/年<br>利差 ${pct(m.spread,2)}/年, 残存 ${pct(m.persist*100,0)}, 手数料純 ${pct(m.kNet,2)}（競合平均 ${pct(m.kbar,2)}）, 資本 ${pct(m.capCost,2)}</div></div>
+    <div class="tile ${tileCls}"><div class="k">粗利益率（保険料比・期間累計）</div><div class="v">${pct(m.grossMargin,2)}</div><div class="d">保証費用 ${pct(m.guaranteeCost,2)}、MVAなし費用 ${pct(p.mva?0:(p.mvaRiskCost||0),2)}pt/年<br>利差 ${pct(m.spread,2)}/年, 残存 ${pct(m.persist*100,0)}, 手数料純 ${pct(m.kNet,2)}（競合平均 ${pct(m.kbar,2)}）, 資本 ${pct(m.capCost,2)}</div></div>
     <div class="tile ${tileCls}"><div class="k">想定粗利益（3年目・一時払のみ）</div><div class="v">${(m.profit===null?'対象外':yen(m.profit))}</div><div class="d">${p.ptype==='level'?'平準払は契約群別CF未実装のため非表示':'運用利回り '+pct(m.invYield,2)+' 前提'}</div></div>`;
 
-  document.getElementById('kpi').innerHTML=`<span>3年目ANP <b>${y3.anp.toFixed(1)}</b> 億円</span><span>件数 <b>${Math.round(y3.cnt).toLocaleString('ja-JP')}</b></span><span>シェア <b>${pct(m.share*100)}</b></span><span>粗利益率（参考） <b style="color:var(--${tileCls})">${pct(m.grossMargin)}</b></span><span>5年累計 <b>${m.years[4].cum.toFixed(0)}</b> 億円</span>`;
+  document.getElementById('kpi').innerHTML=`<span>3年目ANP（${y3.fy}年度） <b>${y3.anp.toFixed(2)}</b> 億円</span><span>件数 <b>${Math.round(y3.cnt).toLocaleString('ja-JP')}</b></span><span>シェア <b>${pct(m.share*100,2)}</b></span><span>粗利益率（参考） <b style="color:var(--${tileCls})">${pct(m.grossMargin,2)}</b></span><span>5年累計 <b>${m.years[4].cum.toFixed(1)}</b> 億円</span>`;
   document.getElementById('fcnote').textContent=p.fcmode==='link'?`日米10年金利差 ${(p.us10-p.jp10).toFixed(2)}pt → 外貨建て比率 ${pct(m.fc*100)}（地銀調査2点で校正したロジット）`:`固定 ${p.fcshare}%（金融庁 定量データ集 2024上期: 主要行60.5%・地銀45.8%・大手証券91.6%、販売額加重 約58%）`;
-  document.getElementById('fcshare').disabled=p.fcmode==='link';
+  document.getElementById('fcshare').disabled=p.fcmode==='link'||p.ptype==='level';
   const labels=m.years.map(y=>y.fy+'年度');
   upsert('cForecast',{type:'bar',data:{labels,datasets:[
     {label:'新規 ANP',data:m.years.map(y=>+y.anpNew.toFixed(1)),backgroundColor:css('--s1'),stack:'a',yAxisID:'y'},
@@ -1081,9 +1176,9 @@ document.getElementById('importJson').addEventListener('click',()=>{const b=docu
 function randn(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}
 function cholesky(A){const n=A.length,L=Array.from({length:n},()=>new Array(n).fill(0));for(let i=0;i<n;i++)for(let j=0;j<=i;j++){let s=A[i][j];for(let k=0;k<j;k++)s-=L[i][k]*L[j][k];L[i][j]=i===j?Math.sqrt(Math.max(s,1e-9)):s/L[j][j]}return L}
 function runMC(){
-  if(!validateNewInputs()){toast('入力範囲を確認してください');return}
-  const p=readState(),N=1000,seed=+document.getElementById('mcSeed').value;
-  if(!Number.isInteger(seed)||seed<0||seed>4294967295){toast('乱数シードは0〜4294967295の整数を指定してください');return}
+  if(!validateNewInputs('current')){toast('入力範囲を確認してください');return}
+  const p=readState(),N=1000,seedInput=document.getElementById('mcSeed'),seed=seedInput.valueAsNumber;
+  if(seedInput.value===''||!Number.isInteger(seed)||seed<0||seed>4294967295){document.getElementById('mcStale').textContent='乱数シードは0〜4294967295の整数を入力してください。';document.getElementById('mcStale').hidden=false;document.getElementById('mcChart').hidden=true;document.getElementById('mcNote').hidden=true;seedInput.focus();return}
   const {stats}=GaikaModel.simulate(p,modelEnvironment(),{N,sig:DYN.sig,corr:DYN.corr,seed});
   const [sU,sA,sJ,sF]=DYN.sig,[mU,mA,mJ]=[p.us10,p.au10,p.jp10];
   const det=model(p).years.map(y=>y.anp);
@@ -1094,6 +1189,7 @@ function runMC(){
     {label:'中央値',data:stats.map(s=>+s.p50.toFixed(1)),borderColor:css('--s1'),backgroundColor:css('--s1'),tension:.2},
     {label:'決定論（現在の前提）',data:det.map(v=>+v.toFixed(1)),borderColor:css('--s2'),borderDash:[5,4],backgroundColor:css('--s2'),tension:.2}]},
     options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,title:{display:true,text:'ANP 億円'}}},plugins:{legend:{position:'bottom',labels:{filter:i=>i.text!=='P10'&&i.text!=='P90'}}}}});
+  MC_SIGNATURE=mcSignature();refreshMCValidity();
   const s3=stats[2];
   document.getElementById('mcNote').textContent=`3年目ANP: 中央値 ${s3.p50.toFixed(1)}億円、P10 ${s3.p10.toFixed(1)} 〜 P90 ${s3.p90.toFixed(1)}億円（${N}経路・シード${seed}）。${p.creditMode==='link'?'自社スプレッド固定':'自社利率据え置き'}、保有残高は経路に沿って更新。金利の回帰先は実行時の入力水準（米${mU.toFixed(2)}・豪${mA.toFixed(2)}・日${mJ.toFixed(2)}%）に固定。相関・ボラは収録月次データから推定: σ 米${sU.toFixed(2)} 豪${sA.toFixed(2)} 日${sJ.toFixed(2)}pt・為替${(sF*100).toFixed(1)}%、相関 米-為替 ${DYN.corr[0][3].toFixed(2)}, 米-豪 ${DYN.corr[0][1].toFixed(2)}, 米-日 ${DYN.corr[0][2].toFixed(2)}。`;
 }
@@ -1290,7 +1386,7 @@ function refreshOptValidity(){
   const signature=optSignature();
   if(OPT_JOB&&OPT_JOB.signature!==signature)stopOpt('入力条件が変わったため探索を中止しました。再実行してください。');
   if(OPT_RESULT&&(OPT_RESULT.signature!==signature||OPT_RESULT.configSignature!==optConfigSignature())){
-    OPT_RESULT.stale=true;optEl('optResults').querySelectorAll('[data-opt-apply]').forEach(b=>b.disabled=true);
+    OPT_RESULT.stale=true;optEl('optResults').hidden=true;optEl('optStale').hidden=false;optEl('optResults').querySelectorAll('[data-opt-apply]').forEach(b=>b.disabled=true);
     optEl('optStatus').textContent='入力条件または探索設定が変わりました。表示中の結果は探索時点のものです。再実行してください。';
   }
 }
@@ -1333,7 +1429,7 @@ async function runOptimizer(){
     cfg=optConfig();optGrid(base,cfg);
   }catch(e){optShowError(e.message);return}
   const id=++OPT_SEQ,signature=optSignature(),configSignature=optConfigSignature();
-  OPT_RESULT=null;OPT_JOB={id,signature};optEl('optResults').hidden=true;optEl('optProgress').value=0;optBusy(true);
+  OPT_RESULT=null;OPT_JOB={id,signature};optEl('optStale').hidden=true;optEl('optResults').hidden=true;optEl('optProgress').value=0;optBusy(true);
   const fixed=optEl('optFixed');fixed.hidden=false;fixed.textContent=`固定した外部環境：米10年 ${pct(base.us10,2)}／豪10年 ${pct(base.au10,2)}／日10年 ${pct(base.jp10,2)}、USD/JPY ${base.usdjpy.toFixed(1)}、円安トレンド ${pct(base.fxtrend,1)}。競合 ${base.comp.length}商品、平均契約保険料 ${base.avgprem}万円。販売体制・保有・収益前提・効用ウェイトも現在値に固定。`;
   optEl('optStatus').textContent='商品候補を比較しています…';
   try{
@@ -1494,6 +1590,8 @@ document.getElementById('showPower').addEventListener('change',e=>document.getEl
 wireSeg('ccy','ccy',defaultCredit);wireSeg('ptype','ptype');wireSeg('mva','mva');wireSeg('guar','guar');wireSeg('reg','reg');wireSeg('fcmode','fcmode');
 document.getElementById('resetEnv').addEventListener('click',()=>{resetEnv();syncVals();render();toast('最新実績（2026年9月）に戻しました')});
 document.getElementById('runMC').addEventListener('click',runMC);
+document.getElementById('mcSeed').addEventListener('input',refreshMCValidity);
+document.getElementById('fixInputError').addEventListener('click',()=>{const id=document.getElementById('inputError').dataset.field,input=document.getElementById(id),panel=input.closest('.panel');showTab(panel.dataset.top,panel.dataset.sub);input.focus();input.scrollIntoView({block:'center'})});
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{chartDefaults();Object.values(charts).forEach(c=>c.destroy());charts={};renderHist();render()});
 
 chartDefaults();fitMarket();fitDynamics();loadScens();loadCatalog();resetEnv();defaultCredit();syncSegs();syncVals();renderComp();renderW();splitSpec();renderHist();render();gotoHash();

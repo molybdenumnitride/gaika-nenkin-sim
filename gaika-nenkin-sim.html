@@ -138,6 +138,7 @@ textarea{width:100%;font:inherit;font-family:var(--mono);font-size:.74rem;paddin
 .opt-ranges th:first-child{min-width:165px}
 .opt-ranges label{cursor:pointer}
 .opt-ranges input[type=checkbox]{accent-color:var(--accent)}
+.opt-prerequisites{padding:14px;border:1px solid var(--accent);border-radius:8px;margin:16px 0;scroll-margin-top:180px}.opt-prerequisites h3{margin:0 0 8px}.opt-prerequisites .opt-controls{grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))}.opt-prerequisites .opt-controls input{width:100%;box-sizing:border-box}.opt-error{border-left:3px solid var(--warn);padding:10px;color:var(--warn);font-size:.85rem;overflow-wrap:anywhere}.opt-prerequisites [aria-invalid="true"]{border-color:var(--warn)}
 .opt-status{margin:12px 0;font-size:.82rem;color:var(--accent)}
 .opt-status progress{display:block;width:100%;height:6px;margin-top:8px;accent-color:var(--accent)}
 .opt-results{border-top:1px solid var(--line);margin-top:16px;padding-top:14px}
@@ -287,7 +288,20 @@ html.param-help-open{overflow:hidden}
 
     <div class="panel" data-top="out" data-sub="optimize" data-title="商品スペック提案">
       <h2>外部条件を固定して、販売総量が最大になる商品案を探す <a class="help-link" href="guide.html#optimization" target="_blank" rel="noopener">設定の考え方 ↗</a></h2>
-      <p class="note">現在の外部環境・競合・販売体制・保有・収益前提・効用ウェイトを固定し、指定した商品仕様の候補を全件比較します。費用・手数料上限は <a href="#profit">収益前提</a> で入力。平均契約保険料も固定します。</p>
+      <p class="note">現在の外部環境・競合・販売体制・保有・収益前提・効用ウェイトを固定し、指定した商品仕様の候補を全件比較します。費用・手数料上限は下の欄で入力できます（インプットの収益前提と共通）。平均契約保険料も固定します。</p>
+      <section class="opt-prerequisites" id="optPrerequisites" aria-labelledby="optPrereqTitle">
+        <h3 id="optPrereqTitle">まず、費用と手数料上限を設定</h3>
+        <p class="note">手数料上限の入力が必須です。費用が空欄の仕様は除外されます。0を含む数値を入力すると比較対象に戻りますが、他の制約も満たす必要があります。</p>
+        <div class="opt-controls" id="optSharedInputs">
+          <label for="optShared-commLimit">累計販売手数料の上限（%）・必須<input id="optShared-commLimit" data-opt-shared="commLimit" type="number" min="0" max="20" step="0.25" placeholder="社内条件を入力" aria-required="true" aria-describedby="optReadiness"></label>
+          <label for="optShared-principalCost">円元本確保の保証費用（保険料比・期間累計%）<input id="optShared-principalCost" data-opt-shared="principalCost" type="number" min="0" max="20" step="0.1" placeholder="未設定なら円元本確保を除外"></label>
+          <label for="optShared-targetCost">目標到達型の追加費用（保険料比・期間累計%）<input id="optShared-targetCost" data-opt-shared="targetCost" type="number" min="0" max="20" step="0.1" placeholder="未設定なら目標到達型を除外"></label>
+          <label for="optShared-mvaRiskCost">MVAなしの金利リスク費用（運用利回り控除・pt/年）<input id="optShared-mvaRiskCost" data-opt-shared="mvaRiskCost" type="number" min="0" max="5" step="0.05" placeholder="未設定ならMVAなしを除外"></label>
+          <label for="optShared-marketKappaLevel" id="optLevelCost" hidden>平準払用の市場換算係数<input id="optShared-marketKappaLevel" data-opt-shared="marketKappaLevel" type="number" min="0.01" max="100" step="0.1" placeholder="未設定なら平準払を除外"></label>
+        </div>
+        <p id="optReadiness" class="note" role="status" aria-live="polite"></p>
+        <p id="optError" class="opt-error" role="alert" tabindex="-1" hidden></p>
+      </section>
       <div class="opt-controls" id="optSettings">
         <label>最大化する指標<select id="optObjective"><option value="anp">5年間の累計新契約ANP</option><option value="premium" selected>5年間の払込保険料総額（モデル値）</option><option value="count">5年間の新契約件数</option></select></label>
         <label>通貨<select id="optCcy"><option value="current">現在の通貨に固定</option><option value="all">米ドル・豪ドルを比較</option><option value="USD">米ドルに固定</option><option value="AUD">豪ドルに固定</option></select></label>
@@ -949,6 +963,7 @@ function upsert(id,cfg){if(charts[id]){charts[id].data=cfg.data;charts[id].optio
 
 let lastForecastRows=[];
 function render(){
+  syncOptPrerequisites();
   if(!validateNewInputs())return;syncCreditUI();const p=readState();const m=model(p);
   const y3=m.years[2];
   const notices=['市場換算は未校正の代理モデル（κ='+m.kappa+'）'];
@@ -1220,6 +1235,35 @@ document.getElementById('demoW').addEventListener('click',demoCodes);
 // ===== Product optimization UI =====
 let OPT_RESULT=null,OPT_JOB=null,OPT_SEQ=0;
 const optEl=id=>document.getElementById(id);
+const OPT_SHARED_FIELDS=['commLimit','principalCost','targetCost','mvaRiskCost','marketKappaLevel'];
+function optPrereqState(){
+  const base=readState(),cfg=optConfig(),missing=[];
+  for(const [key,label,selected] of [
+    ['principalCost','円元本確保',cfg.categories.guar.includes('principal')],
+    ['targetCost','目標到達型',cfg.categories.guar.includes('target')],
+    ['mvaRiskCost','MVAなし',cfg.categories.mva.includes(0)],
+    ['marketKappaLevel','平準払',cfg.categories.ptype.includes('level')]
+  ])if(selected&&!GaikaModel.known(base[key]))missing.push({key,label});
+  let blocker=null;
+  if(!GaikaModel.known(base.commLimit))blocker={key:'commLimit',message:'累計販売手数料の上限を入力すると計算できます。上の必須欄に社内条件を入力してください。'};
+  else if(cfg.categories.guar.every(g=>g!=='none'&&!GaikaModel.known(base[g==='principal'?'principalCost':'targetCost'])))blocker={key:missing.find(x=>['principalCost','targetCost'].includes(x.key)).key,message:'選択した保証の費用がすべて未設定です。上の費用欄を入力するか、最低保証に「なし」を含めてください。'};
+  else if(cfg.categories.mva.every(m=>!m)&&!GaikaModel.known(base.mvaRiskCost))blocker={key:'mvaRiskCost',message:'「MVAなし」のみを探索するには金利リスク費用を入力してください。「あり」を含めることもできます。'};
+  else if(cfg.categories.ptype.every(t=>t==='level')&&!GaikaModel.known(base.marketKappaLevel))blocker={key:'marketKappaLevel',message:'平準払のみを探索するには、平準払用の市場換算係数を入力してください。'};
+  return {cfg,missing,blocker};
+}
+function syncOptPrerequisites(){
+  OPT_SHARED_FIELDS.forEach(key=>{const input=optEl('optShared-'+key),source=optEl(key);if(input.value!==source.value)input.value=source.value;input.removeAttribute('aria-invalid')});
+  const {cfg,missing,blocker}=optPrereqState();
+  optEl('optLevelCost').hidden=!cfg.categories.ptype.includes('level');
+  optEl('optReadiness').textContent=(blocker?blocker.message:'手数料上限は入力済みです。探索範囲を確認して実行してください。')+(missing.length?' 未設定のため除外：'+missing.map(x=>x.label).join('／')+'。':'');
+  if(blocker)optEl('optShared-'+blocker.key).setAttribute('aria-invalid','true');
+}
+function optShowError(message,key){
+  const error=optEl('optError');error.textContent=message;error.hidden=false;optEl('optStatus').textContent=message;
+  if(key){optEl('optPrerequisites').scrollIntoView({block:'start'});optEl('optShared-'+key).focus({preventScroll:true})}
+  else{error.focus();error.scrollIntoView({block:'center'})}
+}
+
 function optSignature(){return JSON.stringify({p:readState(),W,reg:REG.coef,aud:latest(HIST.usdaud)})}
 function optConfig(){
   const base=readState(),categories={};
@@ -1242,6 +1286,7 @@ function stopOpt(message){
   OPT_SEQ++;OPT_JOB=null;optBusy(false);optEl('optStatus').textContent=message;
 }
 function refreshOptValidity(){
+  syncOptPrerequisites();
   const signature=optSignature();
   if(OPT_JOB&&OPT_JOB.signature!==signature)stopOpt('入力条件が変わったため探索を中止しました。再実行してください。');
   if(OPT_RESULT&&(OPT_RESULT.signature!==signature||OPT_RESULT.configSignature!==optConfigSignature())){
@@ -1250,7 +1295,7 @@ function refreshOptValidity(){
   }
 }
 function optSettingsChanged(){
-  syncOptInputs();if(OPT_JOB)stopOpt('探索設定が変わったため中止しました。再実行してください。');refreshOptValidity();
+  optEl('optError').hidden=true;syncOptInputs();if(OPT_JOB)stopOpt('探索設定が変わったため中止しました。再実行してください。');refreshOptValidity();
 }
 function optFormatMetric(m,key){const v=optMetric(m,key);return key==='count'?Math.round(v).toLocaleString('ja-JP')+' 件':yen(v)}
 function optImprovement(value,base){if(!Number.isFinite(base)||base<=0)return '現在案との差 '+(value-base).toFixed(1);const d=(value/base-1)*100;return '現在案比 '+(d>=0?'+':'')+d.toFixed(1)+'%'}
@@ -1278,8 +1323,15 @@ function renderOptResult(result){
   optEl('optStatus').textContent=`全${result.done.toLocaleString('ja-JP')}候補の比較完了。条件適合 ${result.feasible.toLocaleString('ja-JP')}件。未設定・制約超過 ${result.excluded||0}件を除外。${result.invalid?' 数値計算不可 '+result.invalid+'件を除外。':''}`;
 }
 async function runOptimizer(){
-  if(!validateNewInputs()){toast('入力範囲を確認してください');return}
-  let base,cfg;try{base=JSON.parse(JSON.stringify(readState()));if(base.commLimit===null)throw new Error('収益前提で累計販売手数料の上限を入力してください（社内条件を指定）。');cfg=optConfig();optGrid(base,cfg)}catch(e){optEl('optStatus').textContent=e.message;return}
+  optEl('optError').hidden=true;
+  if(!validateNewInputs()){optShowError(document.getElementById('modelWarnings').textContent);return}
+  let base,cfg;
+  try{
+    base=JSON.parse(JSON.stringify(readState()));
+    const {blocker}=optPrereqState();
+    if(blocker){optShowError(blocker.message,blocker.key);return}
+    cfg=optConfig();optGrid(base,cfg);
+  }catch(e){optShowError(e.message);return}
   const id=++OPT_SEQ,signature=optSignature(),configSignature=optConfigSignature();
   OPT_RESULT=null;OPT_JOB={id,signature};optEl('optResults').hidden=true;optEl('optProgress').value=0;optBusy(true);
   const fixed=optEl('optFixed');fixed.hidden=false;fixed.textContent=`固定した外部環境：米10年 ${pct(base.us10,2)}／豪10年 ${pct(base.au10,2)}／日10年 ${pct(base.jp10,2)}、USD/JPY ${base.usdjpy.toFixed(1)}、円安トレンド ${pct(base.fxtrend,1)}。競合 ${base.comp.length}商品、平均契約保険料 ${base.avgprem}万円。販売体制・保有・収益前提・効用ウェイトも現在値に固定。`;
@@ -1289,7 +1341,7 @@ async function runOptimizer(){
     const result=await optSearch(base,cfg,model,{cancelled:()=>id!==OPT_SEQ,onProgress:({done,total})=>{if(id!==OPT_SEQ)return;optEl('optProgress').value=done/total;optEl('optStatus').textContent=`比較中 ${done.toLocaleString('ja-JP')} / ${total.toLocaleString('ja-JP')}候補`}});
     if(id!==OPT_SEQ)return;
     OPT_RESULT={...result,base,baseline,cfg,signature,configSignature,stale:false};OPT_JOB=null;optBusy(false);renderOptResult(OPT_RESULT);
-  }catch(e){if(id!==OPT_SEQ)return;OPT_JOB=null;optBusy(false);optEl('optStatus').textContent=e.name==='AbortError'?'探索を中止しました。':'探索できませんでした：'+e.message}
+  }catch(e){if(id!==OPT_SEQ)return;OPT_JOB=null;optBusy(false);optShowError(e.name==='AbortError'?'探索を中止しました。':'探索できませんでした：'+e.message)}
 }
 function applyOptCandidate(index){
   refreshOptValidity();const r=OPT_RESULT;if(!r||r.stale||!r.top[index])return;
@@ -1300,6 +1352,10 @@ function applyOptCandidate(index){
   optEl('optStatus').textContent=`候補${index+1}の商品仕様を反映しました。外部条件は維持しています。再比較は探索を再実行してください。`;toast('商品仕様に候補'+(index+1)+'を反映しました');
 }
 initOptRanges();syncOptInputs();
+optEl('optSharedInputs').addEventListener('input',e=>{
+  const key=e.target.dataset.optShared;if(!OPT_SHARED_FIELDS.includes(key))return;
+  optEl(key).value=e.target.value;optEl('optError').hidden=true;render();
+});
 optEl('optSettings').addEventListener('input',optSettingsChanged);
 optEl('optRanges').addEventListener('input',optSettingsChanged);
 optEl('runOptimizer').addEventListener('click',runOptimizer);
